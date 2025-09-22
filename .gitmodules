@@ -1,0 +1,3 @@
+[submodule "stoix"]
+	path = stoix
+	url = https://github.com/EdanToledo/Stoix.git

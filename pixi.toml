@@ -11,7 +11,7 @@ python = ">=3.10,<3.12"
 [pypi-dependencies]
 jaxarc_baselines = { path = ".", editable = true }
 JaxARC = { path = "../JaxARC", editable = true }
-# stoix = { path = "./stoix", editable = true }
+stoix = { path = "./stoix", editable = true }
 
 [target.linux.pypi-dependencies]
 jax = { version = ">=0.4.23", extras = ["cuda12"] }
