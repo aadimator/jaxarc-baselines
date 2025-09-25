@@ -13,6 +13,9 @@ jaxarc_baselines = { path = ".", editable = true }
 JaxARC = { path = "../JaxARC", editable = true }
 stoix = { path = "./stoix", editable = true }
 
+# Add a version constraint for protobuf to fix the TypeError from tensorboard_logger.
+protobuf = "~=3.20.0"
+
 [target.linux.pypi-dependencies]
 jax = { version = ">=0.4.23", extras = ["cuda12"] }
 

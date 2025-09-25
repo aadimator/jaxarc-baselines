@@ -172,7 +172,7 @@ environments:
       - pypi: git+https://github.com/bolt-research/popgym-arcade.git?rev=main#4874003d787aa1f22a35bdf5fb1c0a7b56d1a491
       - pypi: git+https://github.com/FLAIROx/popjym.git?rev=main#d7b23ba2ba663628c168897a914f1a0998643265
       - pypi: https://files.pythonhosted.org/packages/c1/1b/f7ea6cde25621cd9236541c66ff018f4268012a534ec31032bcb187dc5e7/proglog-0.1.12-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/5c/f6/88d77011b605ef979aace37b7703e4eefad066f7e84d935e5a696515c2dd/protobuf-6.32.1-cp39-abi3-manylinux2014_x86_64.whl
+      - pypi: https://files.pythonhosted.org/packages/8d/14/619e24a4c70df2901e1f4dbc50a6291eb63a759172558df326347dce1f0d/protobuf-3.20.3-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9d/de/04c8c61232f7244aa0a4b9a9fbd63a89d5aeaf94b2fc9d1d16e2faa5cbb0/psutil-7.1.0-cp36-abi3-manylinux_2_12_x86_64.manylinux2010_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/d7/27/a58ddaf8c588a3ef080db9d0b7e0b97215cee3a45df74f3a94dbbf5c893a/pycodestyle-2.14.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a0/e3/59cd50310fc9b59512193629e1984c1f95e5c8ae6e5d8c69532ccc65a7fe/pycparser-2.23-py3-none-any.whl
@@ -215,7 +215,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/be/d09147ad1ec7934636ad912901c5fd7667e1c858e19d355237db0d0cd5e4/smmap-5.0.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/67/49/ac803ca093ec3845184a752a91cd84511245e1f97103b15cfe32794a3bb0/statsmodels-0.14.5-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
-      - pypi: git+https://github.com/EdanToledo/Stoa.git?rev=main#87056e14c59fa509287e4d79689bb3773c93ada4
+      - pypi: git+https://github.com/EdanToledo/Stoa.git?rev=main#b3ebfd289f2f5b0fa0eb2d8453711439f06e59e3
       - pypi: https://files.pythonhosted.org/packages/84/15/640e399579024a6875918839454025bb1d5f850bb70d96a11eabb644d11c/svgwrite-1.4.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f4/ac/31ba87a959b19e640ebc18851438b82b5b66cef02ad31da7468d1d8bd625/swagger_spec_validator-3.0.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/87/7a/ec0fd26dba69191f82eb8f38f5b401c124f45a207490a7ade6ea9717ecdb/tensorboard_logger-0.1.0-py2.py3-none-any.whl
@@ -392,7 +392,7 @@ environments:
       - pypi: git+https://github.com/bolt-research/popgym-arcade.git?rev=main#4874003d787aa1f22a35bdf5fb1c0a7b56d1a491
       - pypi: git+https://github.com/FLAIROx/popjym.git?rev=main#d7b23ba2ba663628c168897a914f1a0998643265
       - pypi: https://files.pythonhosted.org/packages/c1/1b/f7ea6cde25621cd9236541c66ff018f4268012a534ec31032bcb187dc5e7/proglog-0.1.12-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/10/56/a8a3f4e7190837139e68c7002ec749190a163af3e330f65d90309145a210/protobuf-6.32.1-cp39-abi3-macosx_10_9_universal2.whl
+      - pypi: https://files.pythonhosted.org/packages/8d/14/619e24a4c70df2901e1f4dbc50a6291eb63a759172558df326347dce1f0d/protobuf-3.20.3-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/38/61/f76959fba841bf5b61123fbf4b650886dc4094c6858008b5bf73d9057216/psutil-7.1.0-cp36-abi3-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/d7/27/a58ddaf8c588a3ef080db9d0b7e0b97215cee3a45df74f3a94dbbf5c893a/pycodestyle-2.14.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a0/e3/59cd50310fc9b59512193629e1984c1f95e5c8ae6e5d8c69532ccc65a7fe/pycparser-2.23-py3-none-any.whl
@@ -435,7 +435,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/be/d09147ad1ec7934636ad912901c5fd7667e1c858e19d355237db0d0cd5e4/smmap-5.0.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ca/c1/2654541ff6f5790d01d1e5ba36405fde873f4a854f473e90b4fe56b37333/statsmodels-0.14.5-cp311-cp311-macosx_11_0_arm64.whl
-      - pypi: git+https://github.com/EdanToledo/Stoa.git?rev=main#87056e14c59fa509287e4d79689bb3773c93ada4
+      - pypi: git+https://github.com/EdanToledo/Stoa.git?rev=main#b3ebfd289f2f5b0fa0eb2d8453711439f06e59e3
       - pypi: https://files.pythonhosted.org/packages/84/15/640e399579024a6875918839454025bb1d5f850bb70d96a11eabb644d11c/svgwrite-1.4.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f4/ac/31ba87a959b19e640ebc18851438b82b5b66cef02ad31da7468d1d8bd625/swagger_spec_validator-3.0.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/87/7a/ec0fd26dba69191f82eb8f38f5b401c124f45a207490a7ade6ea9717ecdb/tensorboard_logger-0.1.0-py2.py3-none-any.whl
@@ -2154,8 +2154,8 @@ packages:
   requires_python: '>=3.10'
 - pypi: ../JaxARC
   name: jaxarc
-  version: 0.1.dev243+g1322cd9f3.d20250922
-  sha256: b277773a02f35284b3ab268479da880350b9e28833fa6365f6acce4a3f108cea
+  version: 0.1.dev246+gd2555c4e1.d20250923
+  sha256: 328bc6dfba764adb7ab0922089b2e27f6603f500fb9ca334bfd4ea3d35c38aef
   requires_dist:
   - cairosvg>=2.8.2,<3
   - drawsvg>=2.4.0,<3
@@ -2174,7 +2174,7 @@ packages:
 - pypi: .
   name: jaxarc-baselines
   version: 0.1.0
-  sha256: d2558d23fc29715fa02c194c85e6bcbe46621b807e87a454f2cf0bafcef76023
+  sha256: 468c845128924184d7e966a135315b7a00e646b450929343f27b5e2607290999
   requires_python: '>=3.9'
   editable: true
 - pypi: https://files.pythonhosted.org/packages/f3/e1/3ac61628a0cc048a83a088a67603486d7fbfd68ee0e8f8a22b41a0ddecf6/jaxgl-1.0.1-py3-none-any.whl
@@ -3556,16 +3556,11 @@ packages:
   sha256: ccaafce51e80a81c65dc907a460c07ccb8ec1f78dc660cfd8f9ec3a22f01b84c
   requires_dist:
   - tqdm
-- pypi: https://files.pythonhosted.org/packages/10/56/a8a3f4e7190837139e68c7002ec749190a163af3e330f65d90309145a210/protobuf-6.32.1-cp39-abi3-macosx_10_9_universal2.whl
+- pypi: https://files.pythonhosted.org/packages/8d/14/619e24a4c70df2901e1f4dbc50a6291eb63a759172558df326347dce1f0d/protobuf-3.20.3-py2.py3-none-any.whl
   name: protobuf
-  version: 6.32.1
-  sha256: d8c7e6eb619ffdf105ee4ab76af5a68b60a9d0f66da3ea12d1640e6d8dab7281
-  requires_python: '>=3.9'
-- pypi: https://files.pythonhosted.org/packages/5c/f6/88d77011b605ef979aace37b7703e4eefad066f7e84d935e5a696515c2dd/protobuf-6.32.1-cp39-abi3-manylinux2014_x86_64.whl
-  name: protobuf
-  version: 6.32.1
-  sha256: b1864818300c297265c83a4982fd3169f97122c299f56a56e2445c3698d34710
-  requires_python: '>=3.9'
+  version: 3.20.3
+  sha256: a7ca6d488aa8ff7f329d4c545b2dbad8ac31464f1d8b1c87ad1346717731e4db
+  requires_python: '>=3.7'
 - pypi: https://files.pythonhosted.org/packages/38/61/f76959fba841bf5b61123fbf4b650886dc4094c6858008b5bf73d9057216/psutil-7.1.0-cp36-abi3-macosx_11_0_arm64.whl
   name: psutil
   version: 7.1.0
@@ -4423,7 +4418,7 @@ packages:
   - numpydoc ; extra == 'docs'
   - pandas-datareader ; extra == 'docs'
   requires_python: '>=3.9'
-- pypi: git+https://github.com/EdanToledo/Stoa.git?rev=main#87056e14c59fa509287e4d79689bb3773c93ada4
+- pypi: git+https://github.com/EdanToledo/Stoa.git?rev=main#b3ebfd289f2f5b0fa0eb2d8453711439f06e59e3
   name: stoa-env
   version: 0.1.2
   requires_dist:

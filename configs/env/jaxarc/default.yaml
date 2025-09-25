@@ -1,0 +1,15 @@
+# --- JaxARC Environment Config for Stoix ---
+# This file is found via the `hydra.searchpath` in our main experiment config.
+
+env_name: jaxarc
+
+# Action representation mode: 'mask', 'point', or 'bbox'
+action:
+  mode: point
+
+scenario:
+  name: "Mini-Expansion_and_Interpolation_l6acqdnnv8tlnxpx19"
+  task_name: "mini_arc"
+
+eval_metric: episode_return
+wrapper: null

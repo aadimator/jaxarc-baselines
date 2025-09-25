@@ -25,3 +25,48 @@
 [rtd-link]:                 https://JaxARC-Baselines.readthedocs.io/en/latest/?badge=latest
 
 <!-- prettier-ignore-end -->
+
+## Getting Started
+
+Follow these steps to reproduce the baseline setup locally.
+
+### 1. Clone the repository (with submodules)
+
+```bash
+git clone --recurse-submodules https://github.com/aadimator/JaxARC-Baselines.git
+cd JaxARC-Baselines
+```
+
+If you already cloned the repo without the flag, pull in the `stoix` submodule manually:
+
+```bash
+git submodule update --init --recursive
+```
+
+Ensure the upstream `JaxARC` repository is available alongside this project (e.g. `../JaxARC`).
+
+### 2. Install dependencies with pixi
+
+```bash
+pixi install
+```
+
+Enter the managed environment whenever you work on the project:
+
+```bash
+pixi shell
+```
+
+### 3. Run the default experiment
+
+With the environment active, launch the default PPO baseline:
+
+```bash
+python run_experiment.py
+```
+
+Override any Stoix or JaxARC configuration straight from the command line, for example:
+
+```bash
+python run_experiment.py action=full system.actor_lr=0.0001
+```

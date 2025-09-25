@@ -68,7 +68,8 @@ extend-select = [
 ]
 ignore = [
     "PLR09",   # Too many <...>                                                                                                                                               
-    "PLR2004", # Magic value used in comparison                                                                                                                               
+    "PLR2004", # Magic value used in comparison     
+    "PLC0415",                                                                                                                          
 ]
 isort.required-imports = ["from __future__ import annotations"]
 # Uncomment if using a _compat.typing backport                                                                                                                               

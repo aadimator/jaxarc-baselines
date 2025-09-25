@@ -1,0 +1,78 @@
+# Default experiment config for running PPO on JaxARC.
+# It inherits and composes settings from Stoix's AND JaxARC's configs.
+
+defaults:
+  # --- Stoix System Configs ---
+  - logger: base_logger
+  - arch: anakin
+  - system: ppo/ff_ppo
+  - network: cnn
+  - env: jaxarc/default
+
+  # --- JaxARC System Configs ---
+  # These are loaded from files found in the searchpath.
+  - dataset: mini_arc
+  - reward: minimal
+  - action: raw
+  - _self_
+
+# --- Search Path Configuration ---
+hydra:
+  searchpath:
+    # Point to the correct stoix config path inside the src directory.
+    - file://stoix/stoix/configs
+    - file://configs
+    - pkg://jaxarc.conf
+
+# --- JaxARC Configurations (from JaxARC/conf/config.yaml) ---
+
+environment:
+  max_episode_steps: 150
+  debug_level: "minimal" # off|minimal|verbose
+  auto_reset: true
+
+logging:
+  log_operations: true
+  log_rewards: true
+  log_frequency: 5
+  batched_logging_enabled: true
+
+storage:
+  base_output_dir: "outputs/research"
+  run_name: null # Auto-generated with experiment info
+  episodes_dir: "episodes"
+  debug_dir: "debug"
+  visualization_dir: "visualizations"
+  logs_dir: "logs"
+  max_episodes_per_run: 1000
+  max_storage_gb: 50.0
+  cleanup_policy: "manual"
+  create_run_subdirs: true
+  clear_output_on_start: false
+
+visualization:
+  enabled: true
+  episode_summaries: true
+  step_visualizations: true
+
+wandb:
+  enabled: false  # Defaulting to false. Override with wandb.enabled=true
+  project_name: "jaxarc-experiments"
+  entity: null
+  tags: ["jaxarc", "stoix-baseline"]
+  notes: "Stoix PPO baseline experiment on JaxARC."
+  group: null
+  job_type: "training"
+  offline_mode: false
+  save_code: true
+
+grid_initialization:
+  demo_weight: 1.0
+  permutation_weight: 0.0
+  empty_weight: 0.0
+  random_weight: 0.0
+  permutation_types: [rotate, reflect, color_remap]
+  random_density: 0.3
+  random_pattern_type: sparse
+
+seed: 42
