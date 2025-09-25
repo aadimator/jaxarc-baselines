@@ -22,3 +22,10 @@ jax = { version = ">=0.4.23", extras = ["cuda12"] }
 [target.osx.pypi-dependencies]
 jax = { version = ">=0.4.23", extras = ["cpu"] }
 
+
+[activation.env]
+JAX_PLATFORMS = "cuda,cpu"
+CUDA_VISIBLE_DEVICES = "3"
+# XLA_FLAGS = "--xla_gpu_autotune_level=0"
+JAX_COMPILATION_CACHE_DIR="/tmp/jax_cache"
+LD_LIBRARY_PATH = ""
