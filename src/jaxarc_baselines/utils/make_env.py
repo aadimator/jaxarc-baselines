@@ -1,18 +1,20 @@
-from typing import Callable, Tuple
+from __future__ import annotations
+
+from collections.abc import Callable
 
 from omegaconf import DictConfig
 from stoa.environment import Environment
 
 
 def get_custom_make_fn(
-    original_make_fn: Callable[[DictConfig], Tuple[Environment, Environment]],
-) -> Callable[[DictConfig], Tuple[Environment, Environment]]:
+    original_make_fn: Callable[[DictConfig], tuple[Environment, Environment]],
+) -> Callable[[DictConfig], tuple[Environment, Environment]]:
     """
     Factory function that takes the original Stoix make_env function and
     returns a new, patched version that can handle the 'jaxarc' environment.
     """
 
-    def custom_make(config: DictConfig) -> Tuple[Environment, Environment]:
+    def custom_make(config: DictConfig) -> tuple[Environment, Environment]:
         """
         Creates training and evaluation environments.
 
@@ -23,16 +25,18 @@ def get_custom_make_fn(
         if config.env.env_name == "jaxarc":
             from jaxarc.configs import JaxArcConfig
             from jaxarc.envs import (
-                BboxActionWrapper,
-                PointActionWrapper,
-                FlattenActionWrapper,
                 AnswerObservationWrapper,
+                BboxActionWrapper,
+                FlattenActionWrapper,
+                PointActionWrapper,
             )
             from jaxarc.registration import make as make_jaxarc
             from stoa.core_wrappers.auto_reset import AutoResetWrapper
             from stoa.core_wrappers.episode_metrics import RecordEpisodeMetrics
+            from stoa.core_wrappers.vmap import VmapWrapper
             from stoa.core_wrappers.wrapper import AddRNGKey
-            from stoix.utils.make_env import apply_core_wrappers
+
+            from jaxarc_baselines import ExtendedMetrics
 
             jaxarc_config = JaxArcConfig.from_hydra(config)
 
@@ -51,7 +55,8 @@ def get_custom_make_fn(
                 env = BboxActionWrapper(env)
                 eval_env = BboxActionWrapper(eval_env)
             elif action_mode != "mask":
-                raise ValueError(f"Unknown action mode: {action_mode}")
+                msg = f"Unknown action mode: {action_mode}"
+                raise ValueError(msg)
 
             # 4. Flatten the resulting DictSpace into a single DiscreteSpace for Stoix.
             env = FlattenActionWrapper(env)
@@ -61,20 +66,27 @@ def get_custom_make_fn(
             env = AnswerObservationWrapper(env)
             eval_env = AnswerObservationWrapper(eval_env)
 
-            # 5. Apply the core wrappers from Stoix to the training environment.
-            # This includes the VmapWrapper which is crucial for handling batches of keys.
-            env = apply_core_wrappers(env, config)
+            # 4.6. Apply extended metrics BEFORE vectorization
+            # This wrapper needs to be applied before VmapWrapper
+            env = AddRNGKey(env)
+            env = RecordEpisodeMetrics(env)
+            env = ExtendedMetrics(env)
+            
+            # 5. Apply auto-reset and vectorization wrappers
+            # Note: VmapWrapper without num_envs expects pre-split keys from caller
+            env = AutoResetWrapper(env, next_obs_in_extras=True)
+            env = VmapWrapper(env)
 
             # 6. Apply non-vectorized core wrappers to the evaluation environment.
             # The evaluator handles its own vectorization.
             eval_env = AddRNGKey(eval_env)
             eval_env = RecordEpisodeMetrics(eval_env)
+            eval_env = ExtendedMetrics(eval_env)
             eval_env = AutoResetWrapper(eval_env, next_obs_in_extras=True)
 
             return env, eval_env
 
         # If not 'jaxarc', delegate to the original Stoix make_env function.
-        else:
-            return original_make_fn(config=config)
+        return original_make_fn(config=config)
 
     return custom_make
