@@ -3,9 +3,9 @@
 
 defaults:
   # --- Stoix System Configs ---
-  - logger: base_logger
+  - logger: wandb
   - arch: anakin
-  - system: ppo/ff_ppo
+  - system: ppo/jaxarc
   - network: cnn
   - env: jaxarc/default
 
@@ -56,7 +56,7 @@ visualization:
   step_visualizations: true
 
 wandb:
-  enabled: false  # Defaulting to false. Override with wandb.enabled=true
+  enabled: false # Defaulting to false. Override with wandb.enabled=true
   project_name: "jaxarc-experiments"
   entity: null
   tags: ["jaxarc", "stoix-baseline"]

@@ -3,11 +3,16 @@
 
 # Basic reward settings optimized for training
 reward_on_submit_only: false # Step-by-step rewards for better learning signal
-step_penalty: -0.0005 # Smaller penalty to encourage exploration
-success_bonus: 1000.0 # Higher success bonus for motivation
-unsolved_submission_penalty: -1.0 # Penalty for submitting an unsolved task to prevent reward hacking.
-similarity_weight: 1.0
+step_penalty: -0.05 # A small but meaningful cost to encourage efficiency.
+success_bonus: 10.0 # A large, but numerically stable, bonus.
+unsolved_submission_penalty: -1.0 # A clear penalty for giving up.
+similarity_weight: 5 # Reduced to prevent excessive accumulation
 
 # Efficiency incentives
 efficiency_bonus_threshold: 30 # Encourage efficient solutions
-efficiency_bonus: 3.0 # Good efficiency bonus
+efficiency_bonus: 0 # A small, stable bonus.
+
+# Reward clipping for training stability
+clip_similarity_delta: true # Enable clipping to prevent reward explosion
+similarity_delta_min: -0.2 # Maximum penalty per step from making grid worse
+similarity_delta_max: 0.2 # Maximum reward per step from improving grid

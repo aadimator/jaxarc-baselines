@@ -5,7 +5,7 @@ from stoa.environment import Environment
 
 
 def get_custom_make_fn(
-    original_make_fn: Callable[[DictConfig], Tuple[Environment, Environment]]
+    original_make_fn: Callable[[DictConfig], Tuple[Environment, Environment]],
 ) -> Callable[[DictConfig], Tuple[Environment, Environment]]:
     """
     Factory function that takes the original Stoix make_env function and
@@ -26,7 +26,7 @@ def get_custom_make_fn(
                 BboxActionWrapper,
                 PointActionWrapper,
                 FlattenActionWrapper,
-                AnswerObservationWrapper
+                AnswerObservationWrapper,
             )
             from jaxarc.registration import make as make_jaxarc
             from stoa.core_wrappers.auto_reset import AutoResetWrapper
@@ -37,7 +37,9 @@ def get_custom_make_fn(
             jaxarc_config = JaxArcConfig.from_hydra(config)
 
             # 1. Create the base environment.
-            env, _ = make_jaxarc(config.env.scenario.name, config=jaxarc_config)
+            env, _ = make_jaxarc(
+                config.env.scenario.name, config=jaxarc_config, auto_download=True
+            )
             eval_env, _ = make_jaxarc(config.env.scenario.name, config=jaxarc_config)
 
             # 3. Apply the appropriate JaxARC action wrapper based on the config.
