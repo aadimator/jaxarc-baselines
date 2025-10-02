@@ -12,7 +12,7 @@ defaults:
   # --- JaxARC System Configs ---
   # These are loaded from files found in the searchpath.
   - dataset: mini_arc
-  - reward: minimal
+  - reward: balanced
   - action: raw
   - _self_
 
@@ -74,5 +74,3 @@ grid_initialization:
   permutation_types: [rotate, reflect, color_remap]
   random_density: 0.3
   random_pattern_type: sparse
-
-seed: 42

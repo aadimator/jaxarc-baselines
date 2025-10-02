@@ -78,6 +78,19 @@ def jaxarc_extended_metrics(metrics: Metrics) -> Metrics:
     metrics["best_similarity"] = best_similarity
     metrics["final_similarity"] = final_similarity
 
+    # Add return distribution analysis for monitoring training stability
+    episode_returns = np.asarray(metrics.get("episode_return", np.array([]))).flatten()
+    if len(episode_returns) > 0:
+        # Track high-return episodes separately (indicator of successful solutions)
+        high_return_mask = episode_returns > 5.0
+        metrics["pct_high_return_episodes"] = float(np.mean(high_return_mask) * 100)
+
+        # Track return quantiles for distribution shape analysis
+        metrics["return_p25"] = float(np.percentile(episode_returns, 25))
+        metrics["return_p50"] = float(np.percentile(episode_returns, 50))
+        metrics["return_p75"] = float(np.percentile(episode_returns, 75))
+        metrics["return_p95"] = float(np.percentile(episode_returns, 95))
+
     # Remove the old fields that we've processed
     metrics.pop("solved", None)
     metrics.pop("was_truncated", None)
