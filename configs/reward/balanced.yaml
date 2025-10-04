@@ -1,19 +1,5 @@
-# Balanced reward configuration - Finding the Goldilocks zone
-# Balances stability (from Phase 3) with learning signal (from original)
-# Target: Stable training with 5-10% success rate at 5M timesteps
-
 # Basic reward settings - balanced between stability and learning
-reward_on_submit_only: false
-step_penalty: -0.02 # Between -0.01 (too lenient) and -0.05 (too harsh)
-success_bonus: 7.0 # Between 5.0 (too weak) and 10.0 (too strong)
-unsolved_submission_penalty: -0.75 # Between -0.5 and -1.0
-similarity_weight: 3 # Between 2 (too weak) and 5 (too strong)
-
-# Efficiency incentives
-efficiency_bonus_threshold: 30
-efficiency_bonus: 0
-
-# Reward clipping - balanced bounds
-clip_similarity_delta: true
-similarity_delta_min: -0.15 # Between -0.1 (too tight) and -0.2 (too loose)
-similarity_delta_max: 0.15 # Between 0.1 (too tight) and 0.2 (too loose)
+step_penalty: -0.02
+success_bonus: 10.0
+unsolved_submission_penalty: -1
+similarity_weight: 1

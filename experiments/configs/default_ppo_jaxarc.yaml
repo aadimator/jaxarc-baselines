@@ -5,7 +5,7 @@ defaults:
   # --- Stoix System Configs ---
   - logger: wandb
   - arch: anakin
-  - system: ppo/jaxarc
+  - system: ppo/ff_ppo
   - network: cnn
   - env: jaxarc/default
 
