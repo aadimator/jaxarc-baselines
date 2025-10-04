@@ -8,7 +8,14 @@ action:
   mode: point
 
 scenario:
-  name: "Mini-Bring_the_block_in_corner_to_inside_l6agp0jf2ccngjdegsy"
+  # Dataset selection supports multiple formats:
+  # - "Mini-all"           : All MiniARC tasks
+  # - "Mini-easy"          : Custom subset (defined in subsets/Mini/easy.yaml)
+  # - "Mini-{task_id}"     : Single specific task
+  # - "AGI1-easy"          : Custom subset (defined in subsets/AGI1/easy.yaml)
+  # - "AGI2-all"           : All ARC-AGI-2 tasks
+  # - "Concept-{concept}"  : Specific concept group
+  name: "Mini-easy"
   task_name: "mini_arc"
 
 eval_metric: episode_return

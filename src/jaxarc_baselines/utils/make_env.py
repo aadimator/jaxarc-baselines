@@ -30,13 +30,13 @@ def get_custom_make_fn(
                 FlattenActionWrapper,
                 PointActionWrapper,
             )
-            from jaxarc.registration import make as make_jaxarc
             from stoa.core_wrappers.auto_reset import AutoResetWrapper
             from stoa.core_wrappers.episode_metrics import RecordEpisodeMetrics
             from stoa.core_wrappers.vmap import VmapWrapper
             from stoa.core_wrappers.wrapper import AddRNGKey
 
             from jaxarc_baselines import ExtendedMetrics
+            from jaxarc_baselines.utils.registration import make as make_jaxarc
 
             jaxarc_config = JaxArcConfig.from_hydra(config)
 
@@ -71,7 +71,7 @@ def get_custom_make_fn(
             env = AddRNGKey(env)
             env = RecordEpisodeMetrics(env)
             env = ExtendedMetrics(env)
-            
+
             # 5. Apply auto-reset and vectorization wrappers
             # Note: VmapWrapper without num_envs expects pre-split keys from caller
             env = AutoResetWrapper(env, next_obs_in_extras=True)
