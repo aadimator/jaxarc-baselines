@@ -1,0 +1,31 @@
+# Taken from https://github.com/volotat/ARC-Game/blob/main/tasks/levels.json
+# There's no criteria for these splits, so these are subjective.
+
+task_ids:
+  - "746b3537" # "training/746b3537.json",
+  - "6f8cd79b" # "training/6f8cd79b.json",
+  - "4be741c5" # "training/4be741c5.json",
+  - "7b7f7511" # "training/7b7f7511.json",
+  - "a740d043" # "training/a740d043.json",
+  - "72ca375d" # "training/72ca375d.json",
+  - "a79310a0" # "training/a79310a0.json",
+  - "ed36ccf7" # "training/ed36ccf7.json",
+  - "9f236235" # "training/9f236235.json",
+  - "8be77c9e" # "training/8be77c9e.json",
+  - "5614dbcf" # "training/5614dbcf.json",
+  - "b9b7f026" # "training/b9b7f026.json",
+  - "de1cd16c" # "training/de1cd16c.json",
+  - "be94b721" # "training/be94b721.json",
+  - "1190e5a7" # "training/1190e5a7.json",
+  - "c59eb873" # "training/c59eb873.json",
+  - "1cf80156" # "training/1cf80156.json",
+  - "b1948b0a" # "training/b1948b0a.json",
+  - "f9012d9b" # "training/f9012d9b.json",
+  - "d9fac9be" # "training/d9fac9be.json",
+  - "d631b094" # "training/d631b094.json",
+  - "90c28cc7" # "training/90c28cc7.json",
+  - "23b5c85d" # "training/23b5c85d.json",
+  - "3aa6fb7a" # "training/3aa6fb7a.json",
+  - "d0f5fe59" # "training/d0f5fe59.json",
+  - "2dee498d" # "training/2dee498d.json",
+  - "d037b0a7" # "training/d037b0a7.json"

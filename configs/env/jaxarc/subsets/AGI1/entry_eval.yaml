@@ -1,0 +1,10 @@
+# Taken from https://github.com/volotat/ARC-Game/blob/main/tasks/levels.json
+# There's no criteria for these splits, so these are subjective.
+
+task_ids:
+  - "19bb5feb" # "evaluation/19bb5feb.json",
+  - "1a2e2828" # "evaluation/1a2e2828.json",
+  - "7039b2d7" # "evaluation/7039b2d7.json",
+  - "5289ad53" # "evaluation/5289ad53.json",
+  - "e872b94a" # "evaluation/e872b94a.json",
+  - "66e6c45b" # "evaluation/66e6c45b.json",

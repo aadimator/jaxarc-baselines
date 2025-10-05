@@ -1,0 +1,24 @@
+# Taken from https://github.com/volotat/ARC-Game/blob/main/tasks/levels.json
+# There's no criteria for these splits, so these are subjective. https://github.com/volotat/ARC-Game/issues/7
+
+
+task_ids:
+  - "7837ac64" # "training/7837ac64.json",
+  - "83302e8f" # "training/83302e8f.json",
+  - "539a4f51" # "training/539a4f51.json",
+  - "995c5fa3" # "training/995c5fa3.json",
+  - "3906de3d" # "training/3906de3d.json",
+  - "44d8ac46" # "training/44d8ac46.json",
+  - "3e980e27" # "training/3e980e27.json",
+  - "846bdb03" # "training/846bdb03.json",
+  - "d07ae81c" # "training/d07ae81c.json",
+  - "cdecee7f" # "training/cdecee7f.json",
+  - "9aec4887" # "training/9aec4887.json",
+  - "73251a56" # "training/73251a56.json",
+  - "dbc1a6ce" # "training/dbc1a6ce.json",
+  - "d2abd087" # "training/d2abd087.json",
+  - "75b8110e" # "training/75b8110e.json",
+  - "b0c4d837" # "training/b0c4d837.json",
+  - "9edfc990" # "training/9edfc990.json",
+  - "09629e4f" # "training/09629e4f.json",
+  - "6d0160f0" # "training/6d0160f0.json"

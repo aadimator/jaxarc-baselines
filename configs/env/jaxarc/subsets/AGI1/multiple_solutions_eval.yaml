@@ -1,0 +1,24 @@
+# Taken from https://github.com/volotat/ARC-Game/blob/main/tasks/levels.json
+# There's no criteria for these splits, so these are subjective. https://github.com/volotat/ARC-Game/issues/7
+
+
+task_ids:
+  - "4852f2fa" # "evaluation/4852f2fa.json",
+  - "e21a174a" # "evaluation/e21a174a.json",
+  - "da2b0fe3" # "evaluation/da2b0fe3.json",
+  - "31d5ba1a" # "evaluation/31d5ba1a.json",
+  - "c074846d" # "evaluation/c074846d.json",
+  - "bbb1b8b6" # "evaluation/bbb1b8b6.json",
+  - "12997ef3" # "evaluation/12997ef3.json",
+  - "e345f17b" # "evaluation/e345f17b.json",
+  - "d5c634a2" # "evaluation/d5c634a2.json",
+  - "b1fc8b8e" # "evaluation/b1fc8b8e.json",
+  - "4c177718" # "evaluation/4c177718.json",
+  - "f3e62deb" # "evaluation/f3e62deb.json",
+  - "5d2a5c43" # "evaluation/5d2a5c43.json",
+  - "1d398264" # "evaluation/1d398264.json",
+  - "3b4c2228" # "evaluation/3b4c2228.json",
+  - "8b28cd80" # "evaluation/8b28cd80.json",
+  - "9b4c17c4" # "evaluation/9b4c17c4.json",
+  - "6ea4a07e" # "evaluation/6ea4a07e.json",
+  - "9110e3c5" # "evaluation/9110e3c5.json",
