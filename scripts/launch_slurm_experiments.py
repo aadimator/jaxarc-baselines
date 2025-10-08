@@ -73,11 +73,13 @@ def run_experiment(
         wandb_config: WandB configuration dict
         learning_rate: Optional learning rate override
         task_subset: Optional task subset config
+        obs_config: Optional observation wrapper config
         additional_args: Optional additional command-line arguments
     """
-    # Build base command
+    # Build base command with pixi run to ensure correct environment
     cmd_parts = [
-        f"python {algorithm_exec_file}",
+        "pixi run python",
+        algorithm_exec_file,
         f"env={environment}",
         f"network={network}",
         f"arch.seed={seed}",
