@@ -1,0 +1,65 @@
+# SLURM configuration for JaxARC experiments
+# Customize these parameters based on your cluster setup
+
+slurm:
+  account: ~  # Set your SLURM account name
+  qos: ~  # Set your QoS if required
+  nodes: 1
+  gpus_per_node: 1
+  cpus_per_task: 8  # Adjust based on your cluster
+  partition: ~  # Set your partition (e.g., 'gpu', 'compute')
+  time: 24:00:00  # 24 hours for full experiments
+  folder: "./slurm_logs"
+
+experiment:
+  algorithm_exec_files:
+    - 'run_experiment.py'  # Your main experiment runner
+  
+  # Network architectures to test
+  networks:
+    - arc_shallow_cnn  # Baseline
+    - arc_deep_cnn     # Deeper CNN
+    - arc_visual_resnet  # ResNet with skip connections
+  
+  # Environments/tasks to test
+  # These correspond to files in configs/env/jaxarc/
+  environments:
+    - jaxarc/default
+  
+  # Alternative: Use task_subsets with default environment for more granular control
+  
+  # Random seeds for reproducibility
+  seeds: [42, 123, 456]
+  
+  # Additional experiment parameters to sweep
+  learning_rates: [0.0003, 0.001]
+  
+  # Optional: Task subsets (overrides env.scenario.name)
+  # These correspond to the "name" field in default.yaml
+  # Format: "{Dataset}-{subset}" (e.g., "Mini-easy", "AGI1-easy-eval")
+  # The subset files are in configs/env/jaxarc/subsets/
+  task_subsets:
+    # - default           # Uses env.scenario.name from default.yaml (currently "Mini-easy")
+    - Mini-single_easy
+    - Mini-easy       # Mini-ARC easy tasks (subsets/Mini/easy.yaml)
+    - Mini-all        # All Mini-ARC tasks
+    - AGI1-single_easy 
+    - AGI1-easy-eval  # AGI1 easy evaluation tasks (subsets/AGI1/easy_eval.yaml)
+    - Concept-Center  # ConceptARC Center tasks
+    # - AGI1-medium     # AGI1 medium tasks (subsets/AGI1/medium.yaml)
+    # - AGI1-hard       # AGI1 hard tasks (subsets/AGI1/hard.yaml)
+    # - Concept-all     # All ConceptARC tasks
+
+# Experiment group name for WandB and organization
+experiment_group: arc_architecture_comparison
+
+# WandB specific settings
+wandb:
+  project: "jaxarc-baselines"
+  entity: ~  # Set your WandB entity/team
+  tags:
+    - architecture_sweep
+    - ppo
+  # Run naming strategy: {network}_{task}_{lr}_{seed}
+  name_template: "{network}_{task}_{lr}_s{seed}"
+  group_template: "{experiment_group}_{task}"
