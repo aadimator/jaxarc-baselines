@@ -27,7 +27,9 @@ def get_custom_make_fn(
             from jaxarc.envs import (
                 AnswerObservationWrapper,
                 BboxActionWrapper,
+                ContextualObservationWrapper,
                 FlattenActionWrapper,
+                InputGridObservationWrapper,
                 PointActionWrapper,
             )
             from stoa.core_wrappers.auto_reset import AutoResetWrapper
@@ -62,9 +64,21 @@ def get_custom_make_fn(
             env = FlattenActionWrapper(env)
             eval_env = FlattenActionWrapper(eval_env)
 
-            # 4.5. Add the answer to the observation for training.
-            env = AnswerObservationWrapper(env)
-            eval_env = AnswerObservationWrapper(eval_env)
+            # 4.5. Apply observation wrappers based on config
+            # These add additional channels to the observation (multi-channel input)
+            obs_wrappers = config.env.get("observation_wrappers", {})
+
+            if obs_wrappers.get("answer_grid", True):
+                env = AnswerObservationWrapper(env)
+                eval_env = AnswerObservationWrapper(eval_env)
+
+            if obs_wrappers.get("input_grid", True):
+                env = InputGridObservationWrapper(env)
+                eval_env = InputGridObservationWrapper(eval_env)
+
+            if obs_wrappers.get("contextual", True):
+                env = ContextualObservationWrapper(env)
+                eval_env = ContextualObservationWrapper(eval_env)
 
             # 4.6. Apply extended metrics BEFORE vectorization
             # This wrapper needs to be applied before VmapWrapper

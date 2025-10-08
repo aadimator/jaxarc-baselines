@@ -18,6 +18,12 @@ scenario:
   name: "Mini-easy"
   task_name: "mini_arc"
 
+# Observation wrappers to apply (for multi-channel input experiments)
+observation_wrappers:
+  answer_grid: true      # Add answer grid as observation channel
+  input_grid: true       # Add input grid as observation channel
+  contextual: true       # Add contextual information (demo pairs)
+
 eval_metric: episode_return
 # eval_metric: solve_rate
 wrapper: null

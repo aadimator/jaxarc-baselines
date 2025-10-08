@@ -49,6 +49,35 @@ experiment:
     # - AGI1-medium     # AGI1 medium tasks (subsets/AGI1/medium.yaml)
     # - AGI1-hard       # AGI1 hard tasks (subsets/AGI1/hard.yaml)
     # - Concept-all     # All ConceptARC tasks
+  
+  # Optional: Observation wrapper configurations for ablation studies
+  # Each entry specifies which observation wrappers to enable
+  # This tests which channel combinations help CNN learning
+  observation_wrapper_configs:
+    # Full observation (all channels enabled)
+    - answer_grid: true
+      input_grid: true
+      contextual: true
+    
+    # # Working grid only (no additional observations)
+    # - answer_grid: false
+    #   input_grid: false
+    #   contextual: false
+    
+    # # Answer grid only (target hint)
+    # - answer_grid: true
+    #   input_grid: false
+    #   contextual: false
+    
+    # # Input + Answer (no contextual demos)
+    # - answer_grid: true
+    #   input_grid: true
+    #   contextual: false
+    
+    # # Working + Contextual (no answer hint)
+    # - answer_grid: false
+    #   input_grid: false
+    #   contextual: true
 
 # Experiment group name for WandB and organization
 experiment_group: arc_architecture_comparison

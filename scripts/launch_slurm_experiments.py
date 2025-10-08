@@ -59,6 +59,7 @@ def run_experiment(
     wandb_config: Dict[str, Any],
     learning_rate: Optional[float] = None,
     task_subset: Optional[str] = None,
+    obs_config: Optional[Dict[str, bool]] = None,
     additional_args: Optional[Dict[str, Any]] = None,
 ) -> None:
     """
@@ -92,6 +93,11 @@ def run_experiment(
     # Examples: "Mini-easy", "AGI1-easy-eval", "AGI1-medium", "Concept-all"
     if task_subset and task_subset != "default":
         cmd_parts.append(f"env.scenario.name={task_subset}")
+
+    # Add observation wrapper configuration if specified
+    if obs_config:
+        for wrapper_name, enabled in obs_config.items():
+            cmd_parts.append(f"env.observation_wrappers.{wrapper_name}={enabled}")
 
     # Generate WandB run name and group
     run_name = generate_run_name(
@@ -207,6 +213,11 @@ def main(cfg: DictConfig) -> None:
     # Get task subsets (default means use default from config)
     task_subsets = list(cfg.experiment.get("task_subsets", ["default"]))
 
+    # Get observation wrapper configurations
+    obs_wrapper_configs = cfg.experiment.get("observation_wrapper_configs", [None])
+    if obs_wrapper_configs is None or len(obs_wrapper_configs) == 0:
+        obs_wrapper_configs = [None]
+
     # Get algorithm exec file
     algorithm_exec = cfg.experiment.algorithm_exec_files[0]
 
@@ -215,12 +226,13 @@ def main(cfg: DictConfig) -> None:
     job_count = 0
 
     with executor.batch():
-        for network, env, seed, lr, subset in itertools.product(
+        for network, env, seed, lr, subset, obs_config in itertools.product(
             cfg.experiment.networks,
             cfg.experiment.environments,
             cfg.experiment.seeds,
             learning_rates,
             task_subsets,
+            obs_wrapper_configs,
         ):
             job_count += 1
 
@@ -232,6 +244,11 @@ def main(cfg: DictConfig) -> None:
                 lr=lr,
                 template=wandb_config["name_template"],
             )
+            
+            # Add observation config suffix to run name if specified
+            if obs_config:
+                obs_suffix = "_".join([f"{k[:3]}{int(v)}" for k, v in obs_config.items()])
+                run_name = f"{run_name}_{obs_suffix}"
 
             print(f"[{job_count}] Submitting: {run_name}")
 
@@ -244,6 +261,7 @@ def main(cfg: DictConfig) -> None:
                 wandb_config,
                 lr,
                 subset if subset != "default" else None,
+                obs_config,
             )
             jobs.append((run_name, job))
 
