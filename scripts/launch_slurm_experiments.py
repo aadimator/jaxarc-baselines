@@ -9,21 +9,22 @@ This launcher supports:
 - Intelligent WandB run naming and grouping
 """
 
+from __future__ import annotations
+
 import itertools
-import os
 import subprocess
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import hydra
 import submitit
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 
 
 def generate_run_name(
     network: str,
     task: str,
     seed: int,
-    lr: Optional[float] = None,
+    lr: float | None = None,
     template: str = "{network}_{task}_s{seed}",
 ) -> str:
     """Generate a descriptive run name for WandB."""
@@ -56,11 +57,11 @@ def run_experiment(
     environment: str,
     network: str,
     seed: int,
-    wandb_config: Dict[str, Any],
-    learning_rate: Optional[float] = None,
-    task_subset: Optional[str] = None,
-    obs_config: Optional[Dict[str, bool]] = None,
-    additional_args: Optional[Dict[str, Any]] = None,
+    wandb_config: dict[str, Any],
+    learning_rate: float | None = None,
+    task_subset: str | None = None,
+    obs_config: dict[str, bool] | None = None,
+    additional_args: dict[str, Any] | None = None,
 ) -> None:
     """
     Runs a single JaxARC experiment via subprocess.
@@ -101,36 +102,80 @@ def run_experiment(
         for wrapper_name, enabled in obs_config.items():
             cmd_parts.append(f"env.observation_wrappers.{wrapper_name}={enabled}")
 
-    # Generate WandB run name and group
-    run_name = generate_run_name(
-        network=network,
-        task=environment,
-        seed=seed,
-        lr=learning_rate,
-        template=wandb_config.get("name_template", "{network}_{task}_s{seed}"),
-    )
+    # Log network name as a custom config field for WandB grouping
+    # This creates an "architecture" column in WandB that you can group by
+    cmd_parts.append(f"+architecture={network}")
 
-    group_name = generate_group_name(
-        experiment_group=wandb_config.get("experiment_group", "default"),
-        task=environment,
-        template=wandb_config.get("group_template", "{experiment_group}_{task}"),
-    )
+    # Log observation config as a custom field for WandB grouping
+    # Creates an "obs_config" column (e.g., "ans_inp_contx", "ans_contx", "default")
+    if obs_config:
+        # Simple mapping: answer_grid->ans, input_grid->inp, contextual->contx
+        parts = []
+        if obs_config.get("input_grid"):
+            parts.append("inp")
+        if obs_config.get("contextual"):
+            parts.append("contx")
+        if obs_config.get("answer_grid"):
+            parts.append("ans")
+        obs_config_str = "_".join(parts) if parts else "none"
+    else:
+        obs_config_str = "default"
+    cmd_parts.append(f"+obs_config={obs_config_str}")
 
     # Add WandB configuration
     if wandb_config.get("enabled", True):
-        cmd_parts.append(f"logger.loggers.wandb.enabled=True")
-        cmd_parts.append(f"+logger.loggers.wandb.name={run_name}")
-        cmd_parts.append(f"+logger.loggers.wandb.group={group_name}")
+        cmd_parts.append("logger.loggers.wandb.enabled=True")
 
         if wandb_config.get("project"):
             cmd_parts.append(f"logger.loggers.wandb.project={wandb_config['project']}")
 
         if wandb_config.get("entity"):
-            cmd_parts.append(f"+logger.loggers.wandb.entity={wandb_config['entity']}")
+            cmd_parts.append(f"logger.loggers.wandb.entity={wandb_config['entity']}")
 
-        if wandb_config.get("tags"):
-            tags_str = ",".join(wandb_config["tags"])
-            cmd_parts.append(f"+logger.loggers.wandb.tags=[{tags_str}]")
+        # Build meaningful tags for filtering and grouping in WandB
+        # Tags are the primary way to filter/group runs in WandB UI
+        tags = list(wandb_config.get("tags", []))
+
+        # Add network type as tag (for filtering by architecture)
+        tags.append(f"arch:{network}")
+
+        # Add task/environment as tag (for filtering by task)
+        task_short = environment.split("/")[-1] if "/" in environment else environment
+        tags.append(f"task:{task_short}")
+
+        # Add seed as tag (for filtering by seed)
+        tags.append(f"seed:{seed}")
+
+        # Add learning rate tag if it's a custom value
+        if learning_rate is not None:
+            tags.append(f"lr:{learning_rate}")
+
+        # Add task subset tag if specified (for curriculum learning experiments)
+        if task_subset and task_subset != "default":
+            tags.append(f"subset:{task_subset}")
+
+        # Add observation wrapper tags if specified
+        if obs_config:
+            for wrapper_name, enabled in obs_config.items():
+                if enabled:
+                    tags.append(f"obs:{wrapper_name}")
+
+        # Add experiment group tag for high-level organization
+        exp_group = wandb_config.get("experiment_group", "default")
+        tags.append(f"group:{exp_group}")
+
+        tags_str = ",".join(tags)
+        cmd_parts.append(f"logger.loggers.wandb.tag=[{tags_str}]")
+
+        # Use group_tag for WandB grouping (will be joined with _ in logger)
+        # This creates the "Group" column in WandB which is useful for comparing runs
+        group_name = generate_group_name(
+            experiment_group=wandb_config.get("experiment_group", "default"),
+            task=environment,
+            template=wandb_config.get("group_template", "{experiment_group}_{task}"),
+        )
+        if group_name:
+            cmd_parts.append(f"logger.loggers.wandb.group_tag=[{group_name}]")
 
     # Add any additional arguments
     if additional_args:
@@ -174,29 +219,64 @@ def main(cfg: DictConfig) -> None:
     print(f"Environments: {cfg.experiment.environments}")
     print(f"Seeds: {cfg.experiment.seeds}")
     print(f"Learning Rates: {cfg.experiment.get('learning_rates', ['default'])}")
+    print(f"Max Parallel Jobs: {cfg.slurm.get('max_parallel_jobs', 4)}")
     print("=" * 80)
 
     # Create the submitit executor for SLURM
     executor = submitit.AutoExecutor(folder=cfg.slurm.folder)
 
-    # Build SLURM parameter dictionary
-    slurm_params = {
+    # Build update_parameters arguments
+    # Note: submitit's update_parameters() uses clean names (mem_gb, time, etc.)
+    # and handles the slurm_ prefix and conversions internally
+    update_params = {
         "nodes": cfg.slurm.nodes,
         "gpus_per_node": cfg.slurm.gpus_per_node,
         "cpus_per_task": cfg.slurm.cpus_per_task,
-        "time": cfg.slurm.time,
-        "chdir": os.getcwd(),
-        "slurm_account": cfg.slurm.account,
-        "slurm_qos": cfg.slurm.qos,
-        "slurm_partition": cfg.slurm.partition,
+        "timeout_min": cfg.slurm.get("timeout_min", 60),  # Maps to --time
+        "name": cfg.experiment_group,  # Maps to --job-name
     }
-    slurm_params = filter_none_values(slurm_params)
+
+    # Add memory constraint if specified (prevents oversubscription)
+    # submitit's _convert_mem() handles conversion to proper format
+    if cfg.slurm.get("mem_gb"):
+        update_params["mem_gb"] = cfg.slurm.mem_gb
+
+    # Add exclusive node access if specified
+    if cfg.slurm.get("exclusive", False):
+        update_params["exclusive"] = True
+
+    # Build additional_parameters dict for slurm-specific options
+    # These bypass submitit's equivalence dict and go directly to sbatch
+    additional_params = {}
+
+    if cfg.slurm.account:
+        additional_params["account"] = cfg.slurm.account
+
+    if cfg.slurm.qos:
+        additional_params["qos"] = cfg.slurm.qos
+
+    if cfg.slurm.partition:
+        additional_params["partition"] = cfg.slurm.partition
+
+    if cfg.slurm.get("constraint"):
+        additional_params["constraint"] = cfg.slurm.constraint
+
+    if cfg.slurm.get("gres"):
+        additional_params["gres"] = cfg.slurm.gres
+
+    if additional_params:
+        update_params["additional_parameters"] = additional_params
+
+    # Remove None values
+    update_params = filter_none_values(update_params)
+
+    # Limit concurrent jobs to avoid blocking other users
+    # This tells the scheduler to only run at most 4 jobs at once
+    max_parallel_jobs = cfg.slurm.get("max_parallel_jobs", 4)
+    update_params["slurm_array_parallelism"] = max_parallel_jobs
 
     # Update the executor with SLURM parameters
-    executor.update_parameters(
-        slurm_job_name=cfg.experiment_group,
-        slurm_additional_parameters=slurm_params,
-    )
+    executor.update_parameters(**update_params)
 
     # Prepare WandB config
     wandb_config = {
@@ -246,10 +326,12 @@ def main(cfg: DictConfig) -> None:
                 lr=lr,
                 template=wandb_config["name_template"],
             )
-            
+
             # Add observation config suffix to run name if specified
             if obs_config:
-                obs_suffix = "_".join([f"{k[:3]}{int(v)}" for k, v in obs_config.items()])
+                obs_suffix = "_".join(
+                    [f"{k[:3]}{int(v)}" for k, v in obs_config.items()]
+                )
                 run_name = f"{run_name}_{obs_suffix}"
 
             print(f"[{job_count}] Submitting: {run_name}")

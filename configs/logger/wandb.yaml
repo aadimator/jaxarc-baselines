@@ -46,7 +46,7 @@ loggers:
     upload_json_data: False
   json:
     _target_: stoix.utils.logger.JsonLogger
-    enabled: False
+    enabled: True
 
     # If set, json files will be logged to a set path so that multiple experiments can
     # write to the same json file for easy downstream aggregation and plotting with marl-eval.

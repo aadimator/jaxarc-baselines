@@ -15,14 +15,14 @@ scenario:
   # - "AGI1-easy"          : Custom subset (defined in subsets/AGI1/easy.yaml)
   # - "AGI2-all"           : All ARC-AGI-2 tasks
   # - "Concept-{concept}"  : Specific concept group
-  name: "Mini-easy"
-  task_name: "mini_arc"
+  name: "AGI1-single_easy"
+  task_name: "agi1_single_easy"
 
 # Observation wrappers to apply (for multi-channel input experiments)
 observation_wrappers:
-  answer_grid: true      # Add answer grid as observation channel
-  input_grid: true       # Add input grid as observation channel
-  contextual: true       # Add contextual information (demo pairs)
+  answer_grid: true # Add answer grid as observation channel
+  input_grid: true # Add input grid as observation channel
+  contextual: true # Add contextual information (demo pairs)
 
 eval_metric: episode_return
 # eval_metric: solve_rate

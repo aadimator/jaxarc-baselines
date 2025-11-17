@@ -2,82 +2,104 @@
 # Customize these parameters based on your cluster setup
 
 slurm:
-  account: ~  # Set your SLURM account name
-  qos: ~  # Set your QoS if required
+  account: ~ # Set your SLURM account name
+  qos: ~ # Set your QoS if required
   nodes: 1
   gpus_per_node: 1
-  cpus_per_task: 8  # Adjust based on your cluster
-  partition: ~  # Set your partition (e.g., 'gpu', 'compute')
-  time: 24:00:00  # 24 hours for full experiments
+  cpus_per_task: 8
+  mem_gb: 64
+  partition: ~
+  timeout_min: 480
   folder: "./slurm_logs"
+  # Maximum number of jobs running in parallel (to avoid blocking other users)
+  # Default: 4 (out of potentially many more submitted jobs)
+  max_parallel_jobs: 4
 
 experiment:
   algorithm_exec_files:
-    - 'run_experiment.py'  # Your main experiment runner
-  
+    - "run_experiment.py" # Your main experiment runner
+
   # Network architectures to test
   networks:
-    - arc_shallow_cnn  # Baseline
-    - arc_deep_cnn     # Deeper CNN
-    - arc_visual_resnet  # ResNet with skip connections
-  
+    - arc_shallow_cnn # Baseline
+    # - arc_deep_cnn # Deeper CNN
+    # - arc_visual_resnet # ResNet with skip connections
+
   # Environments/tasks to test
   # These correspond to files in configs/env/jaxarc/
   environments:
     - jaxarc/default
-  
+
   # Alternative: Use task_subsets with default environment for more granular control
-  
+
   # Random seeds for reproducibility
-  seeds: [42, 123, 456]
-  
+  seeds:
+    - 42
+    - 13
+    - 123
+    - 511
+    - 12
+
   # Additional experiment parameters to sweep
-  learning_rates: [0.0003, 0.001]
-  
+  # learning_rates: [0.0003, 0.001]
+  learning_rates:
+    - 3e-4
+
   # Optional: Task subsets (overrides env.scenario.name)
   # These correspond to the "name" field in default.yaml
   # Format: "{Dataset}-{subset}" (e.g., "Mini-easy", "AGI1-easy-eval")
   # The subset files are in configs/env/jaxarc/subsets/
   task_subsets:
     # - default           # Uses env.scenario.name from default.yaml (currently "Mini-easy")
-    - Mini-single_easy
-    - Mini-easy       # Mini-ARC easy tasks (subsets/Mini/easy.yaml)
-    - Mini-all        # All Mini-ARC tasks
-    - AGI1-single_easy 
-    - AGI1-easy-eval  # AGI1 easy evaluation tasks (subsets/AGI1/easy_eval.yaml)
-    - Concept-Center  # ConceptARC Center tasks
+    # - Mini-single_easy
+    # - Mini-easy # Mini-ARC easy tasks (subsets/Mini/easy.yaml)
+    # - Mini-all # All Mini-ARC tasks
+    # - AGI1-single_easy
+    - AGI1-all
+    # - AGI1-entry_train # AGI1 easy evaluation tasks (subsets/AGI1/easy_eval.yaml)
+    # - Concept-Center # ConceptARC Center tasks
     # - AGI1-medium     # AGI1 medium tasks (subsets/AGI1/medium.yaml)
     # - AGI1-hard       # AGI1 hard tasks (subsets/AGI1/hard.yaml)
     # - Concept-all     # All ConceptARC tasks
-  
+
   # Optional: Observation wrapper configurations for ablation studies
   # Each entry specifies which observation wrappers to enable
   # This tests which channel combinations help CNN learning
   observation_wrapper_configs:
+    # Working grid only (no additional observations)
+    - answer_grid: false
+      input_grid: false
+      contextual: false
+
+    # Answer grid only (target hint)
+    - answer_grid: true
+      input_grid: false
+      contextual: false
+
+    # Input grid only (no answer hint)
+    - answer_grid: false
+      input_grid: true
+      contextual: false
+
+    # Contextual grid only (no answer hint)
+    - answer_grid: false
+      input_grid: false
+      contextual: true
+
+    # Input + Answer (no contextual demos)
+    - answer_grid: true
+      input_grid: true
+      contextual: false
+
+    # Input + Contextual (no answer hint)
+    - answer_grid: false
+      input_grid: true
+      contextual: true
+
     # Full observation (all channels enabled)
     - answer_grid: true
       input_grid: true
       contextual: true
-    
-    # # Working grid only (no additional observations)
-    # - answer_grid: false
-    #   input_grid: false
-    #   contextual: false
-    
-    # # Answer grid only (target hint)
-    # - answer_grid: true
-    #   input_grid: false
-    #   contextual: false
-    
-    # # Input + Answer (no contextual demos)
-    # - answer_grid: true
-    #   input_grid: true
-    #   contextual: false
-    
-    # # Working + Contextual (no answer hint)
-    # - answer_grid: false
-    #   input_grid: false
-    #   contextual: true
 
 # Experiment group name for WandB and organization
 experiment_group: arc_architecture_comparison
@@ -85,7 +107,7 @@ experiment_group: arc_architecture_comparison
 # WandB specific settings
 wandb:
   project: "jaxarc-baselines"
-  entity: ~  # Set your WandB entity/team
+  entity: ~ # Set your WandB entity/team
   tags:
     - architecture_sweep
     - ppo

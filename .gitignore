@@ -197,3 +197,5 @@ Thumbs.db
 /data/
 /wandb/
 /docs/
+/results/
+/slurm_logs/
