@@ -26,6 +26,10 @@
 
 <!-- prettier-ignore-end -->
 
+A collection of baseline implementations and utilities for training RL agents on JaxARC environments using the [Stoix](https://github.com/EdanToledo/Stoix) framework.
+
+This repository acts as a thin orchestration layer, leveraging the official JaxARC integration available upstream in Stoix, along with custom experiment configurations, network architectures, and a SLURM launcher.
+
 ## Getting Started
 
 Follow these steps to reproduce the baseline setup locally.
