@@ -79,3 +79,8 @@ grid_initialization:
   permutation_types: [rotate, reflect, color_remap]
   random_density: 0.3
   random_pattern_type: sparse
+
+# Override Stoix's default environment wrapper
+# We use CNNs for JaxARC, so we disable the standard FlattenObservationWrapper
+env:
+  wrapper: null

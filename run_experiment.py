@@ -1,7 +1,11 @@
 """
 Main entry point for running JaxARC experiments with Stoix.
-This script acts as a bridge, initializing a custom environment factory
-and then calling the desired Stoix system's main training function.
+
+This script relies on Stoix's official JaxARC support natively via `jaxarc.stoix_adapter.make_jaxarc_env`.
+
+The only monkey-patch remaining is to inject custom metrics into the StoixLogger,
+as Stoix's FF PPO hardcodes `StoixLogger(config)` without accepting custom_metrics_fn
+via configuration.
 """
 
 from __future__ import annotations
@@ -9,26 +13,15 @@ from __future__ import annotations
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
-# 1. Import the original module and save its make function.
-from stoix.utils import make_env as stoix_make_env_module
+# 1. Import our custom metrics function and monkey-patch StoixLogger
+from stoix.utils import logger as stoix_logger_module
 
-# 2. Import our factory and create the custom make function.
-from jaxarc_baselines.utils import get_custom_make_fn
-
-# 3. Monkey-patch the `make` function in the stoix module.
-stoix_make_env_module.make = get_custom_make_fn(stoix_make_env_module.make)
-
-# 4. Import our custom metrics function and monkey-patch StoixLogger
-# NOTE: These imports must come after make_env patch but before ff_ppo import
-from stoix.utils import logger as stoix_logger_module  # noqa: E402
-
-from jaxarc_baselines.metrics import combined_custom_metrics  # noqa: E402
+from jaxarc_baselines.metrics import combined_custom_metrics
 
 # Save original StoixLogger class
 _OriginalStoixLogger = stoix_logger_module.StoixLogger
 
 
-# Create a wrapper class that injects our custom metrics function
 class JaxARCStoixLogger(_OriginalStoixLogger):
     """Wrapper around StoixLogger that uses our custom metrics by default."""
 
@@ -42,13 +35,16 @@ class JaxARCStoixLogger(_OriginalStoixLogger):
 # Monkey-patch the StoixLogger class
 stoix_logger_module.StoixLogger = JaxARCStoixLogger
 
-# 5. Now that both patches are in place, we can import the Stoix system.
-# Any call to `stoix.utils.make_env.make` inside ff_ppo will now call our custom version.
-# Any instantiation of StoixLogger will use our custom metrics function.
-from stoix.systems.ppo.anakin import ff_ppo  # noqa: E402
 
+# 2. Bootstrap JaxARC registry with all local subset configurations
+from jaxarc.registration.subset_loader import load_all_subsets_for_dataset  # noqa: E402
 
-# 6. Define the main experiment entry point using Hydra.
+for ds in ["Mini", "Concept", "AGI1", "AGI2"]:
+    load_all_subsets_for_dataset(ds)
+
+# 3. Define the main experiment entry point using Hydra.
+# By making the system configurable, you can switch between PPO, DPO, etc.
+# Defaulting to ff_ppo here for backwards compatibility.
 @hydra.main(
     config_path="experiments/configs",
     config_name="default_ppo_jaxarc.yaml",
@@ -56,15 +52,23 @@ from stoix.systems.ppo.anakin import ff_ppo  # noqa: E402
 )
 def run(cfg: DictConfig) -> float:
     """
-    Runs the PPO experiment using the composed Hydra configuration.
+    Runs the experiment using the composed Hydra configuration.
     """
     # Allow dynamic attributes to be added to the config, matching stoix's behavior.
     OmegaConf.set_struct(cfg, False)
 
-    # The `ff_ppo.run_experiment` function will now use:
-    # - Our custom `make_env` factory for JaxARC environments
-    # - Our custom StoixLogger with extended metrics processing
-    return ff_ppo.run_experiment(cfg)
+    # Lazily import the requested system (defaults to ff_ppo)
+    system = cfg.system.system_name
+    if system in {"ff_ppo", "ppo"}:
+        from stoix.systems.ppo.anakin import ff_ppo as runner
+    elif system == "ff_dpo":
+        from stoix.systems.ppo.anakin import ff_dpo_continuous as runner
+    else:
+        # Fallback to ff_ppo if the system is not well mapped here
+        from stoix.systems.ppo.anakin import ff_ppo as runner
+
+    # The runner will now use our custom StoixLogger with extended metrics processing
+    return runner.run_experiment(cfg)
 
 
 if __name__ == "__main__":
