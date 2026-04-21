@@ -199,3 +199,14 @@ Thumbs.db
 /docs/
 /results/
 /slurm_logs/
+
+# LaTeX intermediates for tracked paper workspace
+/paper/neurips-ed/*.aux
+/paper/neurips-ed/*.bbl
+/paper/neurips-ed/*.blg
+/paper/neurips-ed/*.fdb_latexmk
+/paper/neurips-ed/*.fls
+/paper/neurips-ed/*.log
+/paper/neurips-ed/*.out
+/paper/neurips-ed/*.synctex.gz
+/paper/neurips-ed/*.pdf

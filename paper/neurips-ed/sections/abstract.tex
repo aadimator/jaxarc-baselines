@@ -1,0 +1,13 @@
+% Abstract recipe from `planning/neurips_ed_paper_writing_guide.md`:
+% 1. Set up the scientific problem.
+% 2. State the evaluation gap.
+% 3. Introduce JaxARC + the support-to-query protocol.
+% 4. State the main empirical result: support improves, hidden-query transfer does not.
+% 5. State the implication for evaluation and future research.
+%
+% Keep the abstract to one paragraph.
+% Must include: JaxARC, compute-budgeted/support-to-query adaptation, PPO-style baselines,
+% and the support-to-query gap.
+% Avoid: solve, breakthrough, state of the art, robust transfer.
+
+The Abstraction and Reasoning Corpus (ARC) tests whether AI systems can perform inductive reasoning from a few demonstration pairs. Treating ARC as a reinforcement learning problem creates a computational bottleneck, because standard Python-based environments run on the CPU and make large-scale adaptation studies impractical. We built JaxARC to solve this. JaxARC is a JAX-native reinforcement learning environment that uses a functional, stateless architecture to run entirely on accelerators, reaching over 100 million steps per second on a single GPU. We comprehensively profile the system's throughput, measuring how different observation wrappers impact scaling. Using this environment, we introduce a compute-budgeted benchmark protocol for test-time adaptation. The benchmark strictly separates support-side fitting from hidden-query evaluation, giving agents a fixed step budget to learn from demonstrations before attempting a held-out test grid. We validate the environment and protocol using canonical PPO baselines. The results expose a clear generalization gap: agents reliably learn to solve the support demonstrations when given more compute budget, but they cannot transfer that success to hidden queries. JaxARC removes the simulation bottleneck, providing the infrastructure and evaluation protocol necessary to study meta-reinforcement learning and in-context adaptation on ARC at scale.

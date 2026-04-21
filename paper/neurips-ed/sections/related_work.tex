@@ -1,0 +1,26 @@
+% Purpose:
+% Situate the paper at the intersection of ARC, RL-for-ARC, test-time adaptation,
+% JAX-native environment design, and evaluation methodology.
+%
+% Suggested subsections:
+% - ARC and ARC-style reasoning benchmarks
+% - ARCLE and reinforcement learning on ARC
+% - Test-time adaptation / compute in ARC
+% - JAX-native executable benchmarks and fast RL environments
+% - Evaluation/benchmark papers where negative or stress-test findings matter
+%
+% Research workflow for this section:
+% - Use Zotero first.
+% - Use Consensus to verify broader literature claims or fill gaps.
+% - Do not cite from memory.
+%
+% Keep selective:
+% This is not a literature dump. Every cited paper should help explain why this is an ED paper.
+
+ARC work now spans both solver papers and benchmark extensions. On the solver side, program-synthesis, search-based, neuro-symbolic, and language-model approaches still dominate \citep{alfordNeuralGuidedBidirectionalProgram2022,buttCodeItSelfimprovingLanguage2024,batorskiNSANeurosymbolicARC2025}. On the benchmark side, MiniARC, ConceptARC, and H-ARC reorganize the problem in complementary ways: by providing smaller interactive training grounds, by grouping tasks around concepts, and by measuring stronger human baselines \citep{kimPlaygroundsAbstractionReasoning2022,moskvichevConceptARCBenchmarkEvaluating2023,legrisHARCRobustEstimate2024}. The ARC Prize report pushes this trend further by treating ARC less as a single static leaderboard and more as an ecosystem in which data curation, evaluation design, and task-specific adaptation all matter \citep{cholletARCPrize20242025}. That broader view matters here because JaxARC sits closer to the infrastructure side of ARC research than to the solver side.
+
+ARCLE is the most direct precursor because it cast ARC as a reinforcement learning environment \citep{leeARCLEAbstractionReasonin2024}. Its contribution was not just an interface. It spelled out why ARC is hard for RL, pointing to sparse rewards, broad task diversity, and large action spaces, and it showed that PPO can learn individual tasks. Subsequent RL-for-ARC work has mainly asked whether stronger architectures or internal models help within-task learning and transfer \citep{leeEnhancingAnalogicalReasoning2024}. Our paper keeps the RL view of ARC but shifts the emphasis. ARCLE asked whether ARC can be posed as an RL environment at all. We ask what an ARC environment should look like if it is built for accelerator-native execution and used to study task-specific adaptation systematically.
+
+A second line of work studies JAX-native RL environments. Brax showed how accelerator-native simulators can keep environment stepping and policy updates on the same device \citep{freemanBraxDifferentiablePhysics2021}. Pgx extended that idea to board-game benchmarks \citep{koyamadaPgxHardwareAcceleratedParallel2023}, and Jumanji emphasized fast, flexible, and scalable environments for combinatorial problems \citep{bonnetJumanjiDiverseSuite2023}. XLand-MiniGrid paired JAX-native execution with large task distributions for meta-RL \citep{nikulinXLandMiniGridScalableMetaReinforcement2024}, while NAVIX made the practical argument most directly relevant here: when a widely used benchmark remains CPU-bound, environment simulation becomes the bottleneck that limits research iteration \citep{pignatelliNAVIXScalingMiniGrid2025}. Craftax follows a similar pattern by combining a fast JAX rewrite with a harder benchmark and showing that existing methods still struggle \citep{matthewsCraftaxLightningFastBenchmark2024}. JaxARC belongs to this family of papers, but with ARC-specific constraints such as variable-sized grids, support/query task structure, and hidden-target scoring. In that sense, it is closest to ARCLE in problem domain and to NAVIX in overall paper structure.
+
+Finally, recent ARC work and broader meta-RL research have made task-specific adaptation central rather than peripheral. The ARC Prize report describes a setting where search, ensembling, and per-task adaptation all shape performance \citep{cholletARCPrize20242025}. Outside RL, work on ARC has argued that explicit test-time optimization is becoming part of the problem setting rather than a side technique \citep{coleDontThrowBaby2025,akyurekSurprisingEffectivenessTestTime2025}. In RL, meta-learning papers such as MAML and later meta-RL surveys treat fast within-task adaptation as a first-class object of study \citep{finnModelagnosticMetalearningFast2017,beckTutorialMetaReinforcementLearning2025}. Our contribution is not a new adaptation algorithm. It is a JAX-native ARC environment and evaluation protocol that make it practical to separate support fitting from hidden-query transfer and to see how far current baselines actually get.

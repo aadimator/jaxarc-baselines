@@ -1,0 +1,26 @@
+% Purpose:
+% Turn the results into evaluation insight.
+%
+% Main discussion points:
+% - support fitting is not hidden-query solving;
+% - more budget can increase activity/submission without increasing correctness;
+% - protocol design matters because support-side gains can otherwise look misleadingly strong;
+% - JaxARC makes these distinctions practical to study.
+%
+% Limitations to state plainly:
+% - no hidden-query exact solves in completed canonical runs;
+% - limited baseline family;
+% - possible dependence on action-space or architecture choices;
+% - some diagnostic analyses may be narrower than the canonical benchmark.
+%
+% Future work should follow from the data, not from wishful thinking.
+
+The most important conclusion from the current package is that support fitting is not the same thing as hidden-query solving. That may sound obvious in the abstract, but it is easy to obscure in practice. If a method is allowed substantial task-specific computation, its support-side metrics can improve, its query submission rate can increase, and its trajectories can look more purposeful, all without producing a single correct hidden query in the completed canonical series. The benchmark is useful precisely because it forces those outcomes apart.
+
+This result also sharpens how we should think about budget. More compute does matter, but not in the way a simple scaling story would suggest. In these runs, additional budget often buys better support similarity and more willingness to commit to an answer. What it does not buy is a transition from "fits the seen pairs" to "solves the held-out query." That gap is visible in the aggregate series and in the curated failure cases. For this class of baseline, the missing ingredient does not look like mere persistence.
+
+The practicality result matters for the same reason. JaxARC is not scientifically interesting because the throughput number is large on its own. It matters because the environment is fast enough and structured enough to make this distinction measurable across tasks and budgets. A slower environment could still, in principle, support the same benchmark. It would just make the experiment program expensive enough that the support-to-query gap would be harder to characterize cleanly and repeatedly.
+
+There are several limits to what we can conclude. First, the completed canonical runs do not contain hidden-query exact solves, so the current paper is not a claim about emerging generalization just below the threshold of success. Second, the baseline family is intentionally narrow. PPO-style adaptation is a useful stress test, but it is not the whole landscape of ARC methods. Third, some of the more interpretive diagnostics are still based on curated cases rather than a full causal analysis across every task. Finally, the positive-control story is not yet stable enough to include as part of the main benchmark narrative.
+
+Those limits point to grounded follow-up work. A clean next step is to add a properly audited positive control so the benchmark can register a nontrivial query-side success under easier conditions. Beyond that, the current results suggest three concrete directions: better query-generation diagnostics, architectures with stronger compositional priors, and alternative adaptation procedures whose goal is not only to fit support pairs but to preserve structure that could transfer to held-out queries. What the benchmark already tells us is where to look. It does not yet tell us which of those paths will work.

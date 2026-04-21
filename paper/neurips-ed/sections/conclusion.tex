@@ -1,0 +1,10 @@
+% Purpose:
+% End with the evaluative takeaway, not vague optimism.
+%
+% Should say, in compact form:
+% - JaxARC enables a practical benchmark for compute-budgeted ARC adaptation.
+% - The protocol separates support fitting from hidden-query performance.
+% - Current PPO-style baselines improve the former without achieving the latter.
+% - This is exactly why the benchmark is useful.
+
+We presented JaxARC as an accelerator-native evaluation substrate for compute-budgeted task-specific adaptation on ARC and defined a protocol that separates support fitting from hidden-query performance. The completed canonical benchmark runs show that current PPO-style baselines can improve support-side similarity and change query-time behavior, but they do not convert those gains into hidden-query exact success. That is the central result of the paper. JaxARC makes it practical to measure this gap cleanly, and the gap itself is evidence that support-side adaptation and hidden-query transfer should be treated as distinct objects of evaluation rather than as interchangeable signs of progress.

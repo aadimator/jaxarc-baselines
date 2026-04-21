@@ -1,0 +1,54 @@
+% Purpose:
+% Carry the main scientific story through concrete questions and audited artifacts.
+%
+% Recommended structure:
+% - practicality and experimental cost;
+% - support fitting under compute budget;
+% - hidden-query transfer under compute budget;
+% - the support-to-query gap;
+% - diagnostics / failure analysis;
+% - positive control sanity check, clearly labeled if included.
+%
+% Authoritative result roots at the moment:
+% - results/neurips_ed_final_practicality/
+% - results/neurips_ed_final_support_query_gap/
+% - results/neurips_ed_final_failure_taxonomy/
+% - results/neurips_ed_final_program/STATUS_SUMMARY.md
+%
+% Writing rule:
+% Every empirical paragraph should answer four questions:
+% setup, result, evidence file, interpretation.
+
+\subsection{Practicality and experimental cost}
+
+JaxARC makes this benchmark practical enough to sweep systematically. In the archived H100 comparison package, JaxARC reaches a peak mean throughput of 101.3M steps/s at batch 262{,}144, while ARCLE sync peaks at 51.0k steps/s and ARCLE async peaks at 54.1k steps/s on the same host benchmark. The best matched-batch speedups are 3323.2$\times$ over ARCLE sync and 2138.9$\times$ over ARCLE async. The exact numbers are not the main scientific contribution, but they matter because they change the cost profile of the evaluation from something awkward and expensive into something that can be run across many tasks, budgets, and seeds.
+
+The same practicality package also shows a more local engineering win inside the JaxARC pipeline. On AGI1 task `746b3537`, the archived Phase 2 fast path reduces wall-clock from 75.9s to 64.1s at 10k timesteps, from 200.8s to 128.6s at 50k, and from 363.7s to 208.9s at 100k. Those are within-system comparisons rather than ARCLE comparisons, but they support the same point: once the environment and runner are efficient enough, repeated task-specific adaptation studies become routine rather than special-case experiments.
+
+\subsection{Support fitting under a compute budget}
+
+Across the completed canonical series, support-side adaptation is clearly measurable. On ARC-AGI-1 entry-level tasks at 100k timesteps, mean support similarity reaches 0.463 for feedforward PPO, 0.513 for pretrained feedforward PPO, and 0.496 for recurrent PPO. On MiniARC and ConceptARC, the corresponding feedforward PPO support similarities reach 0.708 and 0.797. These are not trivial shifts in behavior. They show that the benchmark is sensitive to budget and architecture choices on the support side, and that current baselines can in fact exploit the observed examples to improve fit.
+
+This point matters because a flat benchmark would teach us very little. The support metrics show that the protocol can register adaptation signal. The negative result later in the section is therefore not a consequence of the benchmark being unable to see any change at all. It is a consequence of that change failing to transfer to hidden queries.
+
+\subsection{Hidden-query transfer under a compute budget}
+
+The hidden-query story is much flatter. Query exact success remains 0.000 across the completed canonical series used in the paper package. This remains true for feedforward PPO, pretrained feedforward PPO, and recurrent PPO on AGI1 at 100k timesteps, and it remains true for the completed MiniARC and ConceptARC feedforward PPO series as well. In other words, the benchmark records meaningful support-side movement without any corresponding emergence of hidden-query exact solves.
+
+Query submission behavior does change. On AGI1, feedforward PPO reaches a submitted-query rate of 0.741 at 100k timesteps, and the pretrained variant reaches 0.519, while query exact success stays at zero. That gap is important. It means more budget can make the policy more willing to commit to a query answer without making that answer correct. If we looked only at activity or submission, we would get a much more optimistic picture than the hidden-query targets support.
+
+\subsection{The support-to-query gap}
+
+The clearest evidence comes from task-level counts at the strongest completed budgets. On ConceptARC at 100k timesteps, 36 of 50 tasks reach support similarity at least 0.8 while still having zero query exact success. Twenty-two of 50 reach support similarity at least 0.9 with zero query exact success, and 5 of 50 reach perfect support similarity with zero query exact success. On AGI1, the same pattern appears at smaller absolute counts but with the same qualitative message: several tasks reach high or perfect support fit, yet none convert that fit into a correct hidden-query solve.
+
+This is the main empirical result of the paper. The benchmark reveals a persistent support-to-query gap. Current PPO-style baselines can often learn enough from the support set to improve similarity on observed examples. They can also become more active at query time. What they do not yet show in the completed canonical runs is reliable transfer from that support-side improvement to the hidden query.
+
+\subsection{Failure modes from targeted diagnostics}
+
+The curated failure-taxonomy package makes the aggregate zero line easier to interpret. In the audited exemplar set, longer budgets still do not unlock hidden-query success: all three long-budget rows remain at query exact 0.000 even when support similarity reaches 1.000. Across the selected cases, seven audited rows reach support similarity 1.000 while query exact remains 0.000. This is not a story of near-misses occasionally resolving with more patience. At least in these cases, perfect support behavior and zero hidden-query success coexist quite comfortably.
+
+Sampling does not rescue the failures either. In the selected AGI1 cases, both audited `sample@16` rows remain at query exact 0.000. Worse, sampling can degrade support-side fit. For task `7b7f7511`, support similarity drops from 1.000 under the base greedy setting to 0.792 under `sample@16`. The failure package therefore argues against a simple decoding explanation in which the right hidden answer is already present and only needs more query-time sampling to surface.
+
+\subsection{What we do not claim from the current package}
+
+One thing is intentionally missing from the main results story: a positive control. The archived evidence is not yet strong enough to promote the legacy privileged-information result into the stable paper package, and we do not want to smuggle an unaudited result into the canonical benchmark narrative. For the current draft, the honest story is that the benchmark already teaches us something useful without that control: support-side adaptation is visible, hidden-query success is not, and JaxARC makes that distinction practical to study.

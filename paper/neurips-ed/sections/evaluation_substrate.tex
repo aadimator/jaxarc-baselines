@@ -1,0 +1,31 @@
+% Purpose:
+% Explain the parts of JaxARC that matter scientifically for the benchmark.
+%
+% Focus on:
+% - accelerator-native execution;
+% - support/query task structure;
+% - access to true hidden targets for correct scoring;
+% - subset/dataset coverage;
+% - sweep-friendly, reproducible logging.
+%
+% Likely appendix material, not main-text material:
+% - wrapper catalogues;
+% - Hydra plumbing;
+% - low-level action-system detail;
+% - long API walkthroughs.
+%
+% Reviewer goal:
+% By the end of this section, a reviewer should understand why JaxARC is a useful evaluation substrate,
+% not merely a fast software artifact.
+
+JaxARC is built around a simple idea: if ARC is going to be studied as an RL domain, then the environment should look like a native JAX environment rather than a Python simulator wrapped around a training loop. This is the same move taken by papers such as Pgx and NAVIX: identify an important benchmark family, make the environment itself accelerator-native, and use that change to expand the class of experiments researchers can run \citep{koyamadaPgxHardwareAcceleratedParallel2023,pignatelliNAVIXScalingMiniGrid2025}. In our case, the motivation is especially direct because ARC studies often multiply across tasks, support sets, budgets, seeds, and evaluation modes. The core API is functional. Reset and step consume explicit state and parameters and return updated state and timestep objects without hidden mutation. All major structures are JAX pytrees, which makes the environment compatible with \texttt{jit}, \texttt{vmap}, and multi-device execution \citep{freemanBraxDifferentiablePhysics2021,bonnetJumanjiDiverseSuite2023}.
+
+\paragraph{Task representation.} ARC tasks contain variable-sized grids and variable numbers of train and test pairs, which are awkward for accelerator execution if represented naively. JaxARC addresses this by preloading tasks into fixed-shape buffers. Grids are padded to a common canvas and accompanied by masks that record their valid extent. This keeps the runtime state static in shape, which is important for efficient batching and compilation. It also means that support pairs, query pairs, and the true hidden query targets can all travel in the same task object, so the environment can support both training and correct held-out evaluation without extra bookkeeping around the simulator.
+
+\paragraph{Datasets.} The environment supports ARC-AGI-1, ARC-AGI-2, ConceptARC, and MiniARC through a common registry and parser interface. In the current paper package, we rely on MiniARC \citep{kimPlaygroundsAbstractionReasoning2022}, ConceptARC \citep{moskvichevConceptARCBenchmarkEvaluating2023}, and ARC-AGI-1 \citep{cholletMeasureIntelligence2019}. The point is not just convenience. A unified task representation makes it possible to compare fast debugging tiers, concept-oriented diagnostics, and more canonical ARC tiers without changing the interaction model.
+
+\paragraph{Actions and observations.} The core action format in JaxARC is an operation identifier paired with a binary selection mask over the grid. On top of that representation, the environment provides point-action and bounding-box wrappers that are easier to use with standard policies. Observation wrappers can expose the working grid alone or augment it with the original input grid, answer-related state, and contextual demonstration information. This is useful for environment research because the observation and action interface can be changed without rewriting the underlying simulator. It also means the environment can support different policy families while keeping the task semantics fixed.
+
+\paragraph{Rewards and episode logic.} ARC is naturally sparse: the cleanest objective is whether the final submitted grid matches the target. JaxARC therefore exposes configurable reward shaping around that sparse objective, including similarity-based shaping, success bonuses, step penalties, and penalties for bad submissions. This lets the same environment support pure sparse-reward studies as well as more shaped training setups. At the episode level, the environment tracks whether an answer was submitted, whether an episode truncated, and what the final grid looked like, which makes it easier to analyze agent behavior than a scalar return alone would.
+
+\paragraph{Why this matters for the paper.} The environment design is not separate from the later benchmark story. Because JaxARC keeps the true hidden targets in the task buffer and logs stable task-level metrics, it supports a clean support-to-query protocol without ad hoc bookkeeping around the simulator. Because it is JAX-native, it also makes large sweeps over tasks, budgets, seeds, and baselines practical. That is the same basic scientific argument made by strong JAX environment papers: changing the environment implementation changes the experiments the field can actually afford to run. The support-to-query benchmark in this paper depends on those properties, but the environment would still be useful without that particular protocol. The right order to understand the contribution is therefore: first the environment, then the evaluation program it enables.
