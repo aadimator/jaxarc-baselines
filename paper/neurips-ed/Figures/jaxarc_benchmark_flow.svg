@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1080" viewBox="0 0 1800 1080" role="img" aria-labelledby="title desc">
+  <title id="title">JaxARC benchmark architecture and information flow</title>
+  <desc id="desc">A paper figure showing host-side task preparation, the compiled JAX environment core, agent-facing wrappers, and evaluator-only hidden-query scoring for JaxARC.</desc>
+  <defs>
+    <marker id="arrow-blue" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M1 1 L11 6 L1 11 Z" fill="#2457c5"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M1 1 L11 6 L1 11 Z" fill="#b86a00"/>
+    </marker>
+    <style>
+      .bg { fill: #ffffff; }
+      .panel-title { font: 700 28px 'Helvetica Neue', Arial, sans-serif; fill: #142033; }
+      .panel-note { font: 400 18px 'Helvetica Neue', Arial, sans-serif; fill: #4a5872; }
+      .box-title { font: 700 24px 'Helvetica Neue', Arial, sans-serif; fill: #142033; }
+      .box-body { font: 400 18px/1.35 'Helvetica Neue', Arial, sans-serif; fill: #24324b; }
+      .mini { font: 400 16px 'Helvetica Neue', Arial, sans-serif; fill: #5b6880; }
+      .legend { font: 400 17px 'Helvetica Neue', Arial, sans-serif; fill: #24324b; }
+      .lane-label { font: 700 20px 'Helvetica Neue', Arial, sans-serif; fill: #2f3b52; letter-spacing: 0.5px; }
+      .top-title { font: 700 34px 'Helvetica Neue', Arial, sans-serif; fill: #142033; }
+      .top-subtitle { font: 400 20px 'Helvetica Neue', Arial, sans-serif; fill: #51607a; }
+      .outline { fill: none; stroke: #bfc9da; stroke-width: 2.2; }
+      .host-panel { fill: #f7f3e8; stroke: #d7c8a1; stroke-width: 2.5; }
+      .core-panel { fill: #eef5ff; stroke: #a9c5ff; stroke-width: 2.5; }
+      .eval-panel { fill: #fff4e4; stroke: #f0c47d; stroke-width: 2.5; }
+      .wrapper-panel { fill: #eef8f0; stroke: #aad1b2; stroke-width: 2.3; }
+      .obs-panel { fill: #f3f4fb; stroke: #cdd4e6; stroke-width: 2.3; }
+      .support-panel { fill: #f8fbff; stroke: #bfd5ff; stroke-width: 1.8; }
+      .query-panel { fill: #fffaf0; stroke: #f2d192; stroke-width: 1.8; }
+      .policy-panel { fill: #f2f7ff; stroke: #bdd1ff; stroke-width: 2.2; }
+      .metric-panel { fill: #ffffff; stroke: #d8e0ef; stroke-width: 1.8; }
+      .dash-amber { fill: none; stroke: #b86a00; stroke-width: 4; stroke-dasharray: 12 10; marker-end: url(#arrow-amber); }
+      .solid-blue { fill: none; stroke: #2457c5; stroke-width: 4; marker-end: url(#arrow-blue); }
+      .thin-blue { fill: none; stroke: #2457c5; stroke-width: 3; marker-end: url(#arrow-blue); }
+      .divider { fill: none; stroke: #d0d9ea; stroke-width: 2; }
+      .pill-blue { fill: #dbe8ff; stroke: #94b8ff; stroke-width: 1.5; }
+      .pill-amber { fill: #ffe7c2; stroke: #efbf6f; stroke-width: 1.5; }
+      .accent-text-blue { fill: #1846a6; font: 700 16px 'Helvetica Neue', Arial, sans-serif; }
+      .accent-text-amber { fill: #9b5c00; font: 700 16px 'Helvetica Neue', Arial, sans-serif; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1800" height="1080"/>
+
+  <text class="top-title" x="80" y="72">JaxARC benchmark architecture and information flow</text>
+  <text class="top-subtitle" x="80" y="106">Parsers build a static-shape task buffer; the compiled core stays fixed while wrappers vary the agent interface and evaluator-only query scoring uses stored hidden targets.</text>
+
+  <rect class="policy-panel" x="655" y="140" rx="18" ry="18" width="490" height="88"/>
+  <text class="box-title" x="900" y="177" text-anchor="middle">Agent / baseline policy</text>
+  <text class="box-body" x="900" y="205" text-anchor="middle">PPO-style adaptation or other task-specific learner</text>
+
+  <rect class="host-panel" x="70" y="260" rx="24" ry="24" width="450" height="680"/>
+  <text class="panel-title" x="102" y="310">Host-side task preparation</text>
+  <text class="panel-note" x="102" y="338">Executed once per dataset, subset, or task selection</text>
+
+  <rect class="metric-panel" x="102" y="374" rx="18" ry="18" width="386" height="118"/>
+  <text class="box-title" x="132" y="414">ARC-style task sources</text>
+  <text class="box-body" x="132" y="445">MiniARC, ConceptARC, ARC-AGI-1</text>
+  <text class="box-body" x="132" y="471">JSON train/test pairs with variable grid sizes</text>
+
+  <path class="solid-blue" d="M295 494 L295 536"/>
+
+  <rect class="metric-panel" x="102" y="538" rx="18" ry="18" width="386" height="138"/>
+  <text class="box-title" x="132" y="578">Parsers + registry</text>
+  <text class="box-body" x="132" y="609">Normalize datasets and resolve subset selectors</text>
+  <text class="box-body" x="132" y="635">Map task ids to a common internal representation</text>
+  <text class="mini" x="132" y="661">Examples: parser entry points, named subsets, task collections</text>
+
+  <path class="solid-blue" d="M295 678 L295 720"/>
+
+  <rect class="metric-panel" x="102" y="722" rx="18" ry="18" width="386" height="170"/>
+  <text class="box-title" x="132" y="762">Fixed-shape task buffer</text>
+  <text class="box-body" x="132" y="793">Stack padded grids plus boolean masks for JAX</text>
+  <text class="box-body" x="132" y="819">Support examples, query inputs, hidden query targets</text>
+  <text class="box-body" x="132" y="845">Pair counts, task_index, subset sampling metadata</text>
+  <text class="mini" x="132" y="871">Built once, then reused by `reset`, `jit`, and `vmap`</text>
+
+  <rect class="core-panel" x="560" y="260" rx="24" ry="24" width="660" height="680"/>
+  <text class="panel-title" x="592" y="310">Compiled JAX environment core</text>
+  <text class="panel-note" x="592" y="338">Functional `reset` / `step`, static-shape state, and mask-based actions</text>
+
+  <rect class="metric-panel" x="592" y="374" rx="18" ry="18" width="596" height="96"/>
+  <text class="box-title" x="622" y="412">Episode reset</text>
+  <text class="box-body" x="622" y="436">Sample `task_idx` and `pair_idx` from the stacked task buffer,</text>
+  <text class="box-body" x="622" y="462">then initialize the working grid and masks.</text>
+
+  <path class="solid-blue" d="M892 472 L892 508"/>
+
+  <rect class="support-panel" x="592" y="510" rx="18" ry="18" width="278" height="154"/>
+  <text class="lane-label" x="622" y="547">Support episode path</text>
+  <text class="box-body" x="622" y="578">Load train input/output pair</text>
+  <text class="box-body" x="622" y="604">Visible target grid for adaptation</text>
+  <text class="box-body" x="622" y="630">Similarity shaping may be active</text>
+
+  <rect class="query-panel" x="910" y="510" rx="18" ry="18" width="278" height="154"/>
+  <text class="lane-label" x="940" y="547">Query episode path</text>
+  <text class="box-body" x="940" y="578">Load test input grid for the held-out pair</text>
+  <text class="box-body" x="940" y="604">Mask target grid inside agent-visible state</text>
+  <text class="box-body" x="940" y="630">Keep exact hidden target in the task buffer</text>
+
+  <path class="solid-blue" d="M731 666 L731 700"/>
+  <path class="solid-blue" d="M1049 666 L1049 700"/>
+
+  <rect class="metric-panel" x="662" y="702" rx="18" ry="18" width="456" height="132"/>
+  <text class="box-title" x="692" y="742">Functional environment state</text>
+  <text class="box-body" x="692" y="773">`working_grid`, grid masks, `input_grid`, and the current `target_grid` view</text>
+  <text class="box-body" x="692" y="799">`selected`, `clipboard`, `step_count`, `task_idx`, and `pair_idx`</text>
+
+  <rect class="wrapper-panel" x="560" y="838" rx="18" ry="18" width="296" height="82"/>
+  <text class="box-title" x="592" y="873">Action wrappers</text>
+  <text class="box-body" x="592" y="894">Point / bbox / flatten</text>
+  <text class="box-body" x="592" y="918">to canonical `(operation, selection mask)`</text>
+
+  <rect class="obs-panel" x="924" y="838" rx="18" ry="18" width="296" height="82"/>
+  <text class="box-title" x="956" y="873">Observation wrappers</text>
+  <text class="box-body" x="956" y="894">Working grid plus optional input, answer,</text>
+  <text class="box-body" x="956" y="918">clipboard, or context channels</text>
+
+  <path class="solid-blue" d="M900 228 L900 258"/>
+  <path class="solid-blue" d="M900 920 L900 946 L1130 946 L1130 922"/>
+  <path class="solid-blue" d="M900 920 L900 946 L708 946 L708 922"/>
+  <path class="solid-blue" d="M856 878 L890 878"/>
+  <path class="solid-blue" d="M924 878 L890 878"/>
+
+  <rect class="eval-panel" x="1260" y="260" rx="24" ry="24" width="470" height="680"/>
+  <text class="panel-title" x="1292" y="310">Benchmark evaluation and logging</text>
+  <text class="panel-note" x="1292" y="338">Keep hidden-query checks outside the policy-visible path</text>
+
+  <rect class="metric-panel" x="1292" y="376" rx="18" ry="18" width="406" height="104"/>
+  <text class="box-title" x="1322" y="414">Core transition output</text>
+  <text class="box-body" x="1322" y="436">Terminal working grid, submit event, reward path,</text>
+  <text class="box-body" x="1322" y="462">and episode termination signal</text>
+
+  <path class="solid-blue" d="M1495 482 L1495 520"/>
+
+  <rect class="metric-panel" x="1292" y="522" rx="18" ry="18" width="406" height="110"/>
+  <text class="box-title" x="1322" y="560">Support-side metrics</text>
+  <text class="box-body" x="1322" y="582">Support exact success, final-grid match,</text>
+  <text class="box-body" x="1322" y="608">mean similarity, and steps to solve</text>
+  <text class="mini" x="1322" y="614">Computed from visible targets during adaptation episodes</text>
+
+  <rect class="query-panel" x="1292" y="664" rx="18" ry="18" width="406" height="170"/>
+  <text class="box-title" x="1322" y="704">Evaluator-only hidden-query check</text>
+  <text class="box-body" x="1322" y="734">Recompute final-grid match and similarity from the terminal grid.</text>
+  <text class="box-body" x="1322" y="760">Compare against stored hidden targets:</text>
+  <text class="box-body" x="1322" y="786">`true_test_output_grids`, `true_test_output_masks`</text>
+  <text class="mini" x="1322" y="812">Draw this as a separate benchmark lane, not as policy-visible state</text>
+
+  <path class="solid-blue" d="M1495 836 L1495 874"/>
+
+  <rect class="metric-panel" x="1292" y="876" rx="18" ry="18" width="406" height="62"/>
+  <text class="box-body" x="1322" y="904">Query exact success, final similarity, submission rate,</text>
+  <text class="box-body" x="1322" y="928">best similarity, and truncation</text>
+
+  <path class="solid-blue" d="M488 806 L558 806"/>
+  <path class="solid-blue" d="M1218 768 L1258 768"/>
+  <path class="solid-blue" d="M1118 768 L1258 768"/>
+
+  <path class="dash-amber" d="M488 806 C620 806, 740 806, 1260 749"/>
+
+  <path class="dash-amber" d="M1049 588 C1165 588, 1212 610, 1280 688"/>
+
+  <path class="solid-blue" d="M1118 768 C1200 768, 1220 768, 1290 428"/>
+
+  <rect class="pill-blue" x="80" y="972" rx="16" ry="16" width="260" height="46"/>
+  <text class="accent-text-blue" x="210" y="1001" text-anchor="middle">solid blue = agent-visible or core flow</text>
+
+  <rect class="pill-amber" x="360" y="972" rx="16" ry="16" width="320" height="46"/>
+  <text class="accent-text-amber" x="520" y="1001" text-anchor="middle">dashed amber = evaluator-only hidden-target flow</text>
+
+  <text class="legend" x="720" y="1001">Static-shape padding keeps the compiled core vectorizable; wrappers vary the interface without changing task semantics.</text>
+</svg>
