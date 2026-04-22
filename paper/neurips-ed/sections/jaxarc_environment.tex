@@ -1,0 +1,34 @@
+\section{JaxARC as an RL Environment}\label{sec:jaxarc_environment}
+% Purpose:
+% Explain the parts of JaxARC that matter scientifically for the benchmark.
+%
+% Focus on:
+% - accelerator-native execution;
+% - support/query task structure;
+% - access to true hidden targets for correct scoring;
+% - subset/dataset coverage;
+% - sweep-friendly, reproducible logging.
+%
+% Likely appendix material, not main-text material:
+% - wrapper catalogues;
+% - Hydra plumbing;
+% - low-level action-system detail;
+% - long API walkthroughs.
+%
+% Reviewer goal:
+% By the end of this section, a reviewer should understand why JaxARC is a useful evaluation substrate,
+% not merely a fast software artifact.
+
+JaxARC operates on a simple premise: if ARC is going to be studied seriously as a reinforcement learning domain, the environment itself must be accelerator-native. Standard Python simulators that wrap an RL training loop create severe bottlenecks when experiments need to scale across hundreds of unique tasks, multiple support demonstrations, diverse network architectures, and varying compute budgets. JaxARC eliminates this bottleneck by moving the entire environment into JAX. The core API is purely functional. The \texttt{reset} and \texttt{step} functions consume explicit state and parameters, returning updated state and timestep objects without any hidden mutation. Because all major environment structures are JAX pytrees, JaxARC is fully compatible with \texttt{jit} compilation, \texttt{vmap} vectorization, and multi-device execution \citep{freemanBraxDifferentiablePhysics2021,bonnetJumanjiDiverseSuite2023}. 
+
+Beyond raw throughput, JaxARC is specifically engineered to handle the structural quirks of ARC that typically make hardware acceleration difficult. We detail these core design choices below.
+
+\paragraph{Task representation and support/query splits.} A standard ARC task contains a variable number of training (support) pairs and testing (query) pairs, with grid sizes ranging anywhere from $1 \times 1$ to $30 \times 30$. Naively representing this variance breaks the static shape requirements of \texttt{jit} compilation. JaxARC solves this by preloading tasks into fixed-shape buffers. All grids are padded to a common maximum canvas size, accompanied by boolean masks that record their valid active regions. Crucially, support pairs, query pairs, and the true hidden query targets are all packaged together in the same task object. This allows the environment to seamlessly transition between training on support grids and evaluating on held-out query grids natively on the GPU, without requiring complex, slow bookkeeping in the outer Python training loop.
+
+\paragraph{Unified dataset coverage.} ARC is not a single dataset; it is an ecosystem of related challenges. JaxARC provides a unified registry and parser interface that natively supports ARC-AGI \citep{cholletMeasureIntelligence2019}, ConceptARC \citep{moskvichevConceptARCBenchmarkEvaluating2023}, and MiniARC \citep{kimPlaygroundsAbstractionReasoning2022}. This unified representation is a scientific feature, not just a convenience. It allows researchers to seamlessly move from fast debugging tiers (MiniARC) to concept-oriented diagnostic tiers (ConceptARC) to the canonical challenge (ARC-AGI) using the exact same interaction model and baseline agents.
+
+\paragraph{Actions and observations.} Translating ARC's discrete grid edits into a tractable RL action space is challenging. The core action format in JaxARC pairs an operation identifier (e.g., color, fill, move) with a binary selection mask over the grid. To make this accessible to standard policy networks, the environment provides point-action and bounding-box wrappers that map simpler discrete or continuous outputs into this underlying mask representation. Similarly, observation wrappers allow researchers to expose just the working grid, or to augment it with the original input grid, clipboard state, and contextual demonstration pairs. Because these wrappers sit on top of the base simulator, researchers can easily experiment with different agent architectures and perceptual inductive biases without rewriting the core environment logic.
+
+\paragraph{Configurable reward shaping.} ARC is fundamentally a sparse-reward problem: the only true objective is whether the final submitted grid perfectly matches the target. However, pure sparse rewards are notoriously difficult to optimize from scratch. JaxARC exposes configurable reward shaping around this sparse objective. Researchers can easily toggle similarity-based shaping (e.g., intersection over union between the working grid and the target), success bonuses, step penalties, and penalties for invalid submissions. The environment also tracks detailed episode-level metrics—whether an agent formally submitted an answer, whether the episode truncated due to time limits, and the exact state of the final grid. This rich logging is essential for understanding \emph{why} an agent failed, rather than just observing a zero return.
+
+\paragraph{Enabling the benchmark.} These design choices make JaxARC more than just a fast software artifact; they make it a rigorous evaluation substrate. Because JaxARC stores the true hidden targets securely within the compiled task buffer and logs stable, task-level metrics, it natively supports a strict support-to-query evaluation protocol. By removing the simulation bottleneck and formalizing the environment mechanics, JaxARC makes it affordable to run the massive, repeated sweeps required to study meta-RL and test-time adaptation on ARC.
