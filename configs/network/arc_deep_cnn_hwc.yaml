@@ -1,0 +1,27 @@
+# Deeper HWC CNN configuration for ARC tasks.
+
+actor_network:
+  pre_torso:
+    _target_: stoix.networks.torso.CNNTorso
+    channel_sizes: [32, 64, 64, 64]
+    kernel_sizes: [3, 3, 3, 3]
+    strides: [1, 1, 1, 1]
+    use_layer_norm: False
+    activation: silu
+    channel_first: False
+    hidden_sizes: [256, 256]
+  action_head:
+    _target_: stoix.networks.heads.CategoricalHead
+
+critic_network:
+  pre_torso:
+    _target_: stoix.networks.torso.CNNTorso
+    channel_sizes: [32, 64, 64, 64]
+    kernel_sizes: [3, 3, 3, 3]
+    strides: [1, 1, 1, 1]
+    use_layer_norm: False
+    activation: silu
+    channel_first: False
+    hidden_sizes: [256, 256]
+  critic_head:
+    _target_: stoix.networks.heads.ScalarCriticHead

@@ -1,0 +1,45 @@
+# Recurrent CNN+GRU network for ARC observations in HWC layout.
+
+actor_network:
+  pre_torso:
+    _target_: stoix.networks.torso.CNNTorso
+    channel_sizes: [32, 64, 64]
+    kernel_sizes: [3, 3, 3]
+    strides: [1, 1, 1]
+    use_layer_norm: False
+    activation: silu
+    channel_first: False
+    hidden_sizes: [128]
+  rnn_layer:
+    _target_: stoix.networks.base.ScannedRNN
+    cell_type: gru
+    hidden_state_dim: 128
+  post_torso:
+    _target_: stoix.networks.torso.MLPTorso
+    layer_sizes: [128]
+    use_layer_norm: False
+    activation: silu
+  action_head:
+    _target_: stoix.networks.heads.CategoricalHead
+
+critic_network:
+  pre_torso:
+    _target_: stoix.networks.torso.CNNTorso
+    channel_sizes: [32, 64, 64]
+    kernel_sizes: [3, 3, 3]
+    strides: [1, 1, 1]
+    use_layer_norm: False
+    activation: silu
+    channel_first: False
+    hidden_sizes: [128]
+  rnn_layer:
+    _target_: stoix.networks.base.ScannedRNN
+    cell_type: gru
+    hidden_state_dim: 128
+  post_torso:
+    _target_: stoix.networks.torso.MLPTorso
+    layer_sizes: [128]
+    use_layer_norm: False
+    activation: silu
+  critic_head:
+    _target_: stoix.networks.heads.ScalarCriticHead

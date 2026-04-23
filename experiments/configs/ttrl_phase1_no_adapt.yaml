@@ -1,0 +1,114 @@
+defaults:
+  - logger: wandb
+  - arch: anakin
+  - system: ppo/ff_ppo
+  - network: arc_shallow_cnn_hwc
+  - env: jaxarc/default
+  - dataset: mini_arc
+  - reward: balanced
+  - action: raw
+  - _self_
+
+arch:
+  seed: 42
+  total_timesteps: 0
+  total_num_envs: 10
+  num_evaluation: 1
+  num_eval_episodes: 4
+  evaluation_greedy: true
+  absolute_metric: false
+
+system:
+  rollout_length: 25
+  num_minibatches: 5
+  decay_learning_rates: false
+
+hydra:
+  searchpath:
+    - file://stoix/stoix/configs
+    - file://configs
+    - pkg://jaxarc.conf
+
+environment:
+  max_episode_steps: 100
+  debug_level: "minimal"
+  auto_reset: true
+
+logging:
+  log_operations: true
+  log_rewards: true
+  log_frequency: 5
+  batched_logging_enabled: true
+
+storage:
+  base_output_dir: "outputs/research"
+  run_name: null
+  episodes_dir: "episodes"
+  debug_dir: "debug"
+  visualization_dir: "visualizations"
+  logs_dir: "logs"
+  max_episodes_per_run: 1000
+  max_storage_gb: 50.0
+  cleanup_policy: "manual"
+  create_run_subdirs: true
+  clear_output_on_start: false
+
+visualization:
+  enabled: true
+  episode_summaries: true
+  step_visualizations: true
+
+wandb:
+  enabled: false
+  project_name: "jaxarc-experiments"
+  entity: null
+  tags: ["jaxarc", "ttrl-phase1", "no-adapt"]
+  notes: "Phase 1 no-adaptation baseline."
+  group: null
+  job_type: "benchmark"
+  offline_mode: false
+  save_code: true
+
+grid_initialization:
+  demo_weight: 1.0
+  permutation_weight: 0.0
+  empty_weight: 0.0
+  random_weight: 0.0
+  permutation_types: [rotate, reflect, color_remap]
+  random_density: 0.3
+  random_pattern_type: sparse
+
+logger:
+  base_exp_path: results/
+  loggers:
+    console:
+      enabled: true
+    wandb:
+      enabled: false
+    neptune:
+      enabled: false
+    json:
+      enabled: false
+    tensorboard:
+      enabled: false
+  checkpointing:
+    save_model: false
+    load_model: false
+
+env:
+  wrapper: null
+  scenario:
+    name: Mini-easy
+    task_name: mini_easy_ttrl
+
+benchmark:
+  phase_name: Phase 1
+  method: no_adaptation
+  dataset: Mini
+  subset: easy
+  task_ids: []
+  num_tasks: 3
+  budgets: [0]
+  generate_plots: true
+  output_root: results/neurips_ed_phase1
+  run_name: phase1_mini_easy_no_adapt

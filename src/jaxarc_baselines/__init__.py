@@ -11,6 +11,7 @@ from __future__ import annotations
 
 # Metrics
 from jaxarc_baselines.metrics import combined_custom_metrics
+from jaxarc_baselines.ttrl import make_single_pair_task, run_ttrl_benchmark, score_final_grid
 
 __version__ = "0.1.0"
 
@@ -19,4 +20,8 @@ __all__ = [
     "__version__",
     # Metrics
     "combined_custom_metrics",
+    # TTRL benchmark helpers
+    "make_single_pair_task",
+    "run_ttrl_benchmark",
+    "score_final_grid",
 ]

@@ -61,6 +61,8 @@ def run(cfg: DictConfig) -> float:
     system = cfg.system.system_name
     if system in {"ff_ppo", "ppo"}:
         from stoix.systems.ppo.anakin import ff_ppo as runner
+    elif system == "rec_ppo":
+        from stoix.systems.ppo.anakin import rec_ppo as runner
     elif system == "ff_dpo":
         from stoix.systems.ppo.anakin import ff_dpo_continuous as runner
     else:

@@ -1,0 +1,115 @@
+defaults:
+  - logger: wandb
+  - arch: anakin
+  - system: ppo/ff_ppo
+  - network: arc_deep_cnn_hwc
+  - env: jaxarc/default
+  - dataset: concept_arc
+  - reward: balanced
+  - action: raw
+  - _self_
+
+arch:
+  seed: 42
+  total_timesteps: 10000
+  total_num_envs: 40
+  num_evaluation: 1
+  num_eval_episodes: 1
+  evaluation_greedy: true
+  absolute_metric: false
+
+system:
+  rollout_length: 25
+  num_minibatches: 5
+  decay_learning_rates: false
+
+hydra:
+  searchpath:
+    - file://stoix/stoix/configs
+    - file://configs
+    - pkg://jaxarc.conf
+
+environment:
+  max_episode_steps: 150
+  debug_level: "minimal"
+  auto_reset: true
+
+logging:
+  log_operations: false
+  log_rewards: false
+  log_frequency: 20
+  batched_logging_enabled: true
+
+storage:
+  base_output_dir: "outputs/research"
+  run_name: null
+  episodes_dir: "episodes"
+  debug_dir: "debug"
+  visualization_dir: "visualizations"
+  logs_dir: "logs"
+  max_episodes_per_run: 1000
+  max_storage_gb: 50.0
+  cleanup_policy: "manual"
+  create_run_subdirs: true
+  clear_output_on_start: false
+
+visualization:
+  enabled: false
+  episode_summaries: false
+  step_visualizations: false
+
+wandb:
+  enabled: false
+  project_name: "jaxarc-experiments"
+  entity: null
+  tags: ["jaxarc", "ttrl-phase2", "concept-all", "deep"]
+  notes: "Phase 2 Concept-all deep FF-PPO adaptation benchmark."
+  group: null
+  job_type: "benchmark"
+  offline_mode: false
+  save_code: true
+
+grid_initialization:
+  demo_weight: 1.0
+  permutation_weight: 0.0
+  empty_weight: 0.0
+  random_weight: 0.0
+  permutation_types: [rotate, reflect, color_remap]
+  random_density: 0.3
+  random_pattern_type: sparse
+
+logger:
+  base_exp_path: results/
+  loggers:
+    console:
+      enabled: true
+    wandb:
+      enabled: false
+    neptune:
+      enabled: false
+    json:
+      enabled: false
+    tensorboard:
+      enabled: false
+  checkpointing:
+    save_model: false
+    load_model: false
+
+env:
+  wrapper: null
+  scenario:
+    name: Concept-all
+    task_name: concept_all_ttrl_phase2
+
+benchmark:
+  phase_name: Phase 2
+  method: ff_ppo_adaptation_deep
+  dataset: Concept
+  subset: all
+  task_ids: []
+  num_tasks: 0
+  budgets: [10000, 50000, 100000]
+  generate_plots: true
+  output_root: results/neurips_ed_phase2
+  run_name: phase2_concept_all_deep
+  reuse_training_across_budgets: true
