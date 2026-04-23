@@ -1,0 +1,64 @@
+\section{Experiments and results}
+\label{sec:experiments}
+
+We organize the empirical study around three questions. First, is JaxARC practical enough to support repeated ARC adaptation studies at the scale needed for an ED-track benchmark? Second, what does a simple PPO baseline do when the observation interface is made more or less helpful? Third, under the canonical support/query protocol, do task-specific PPO updates convert support-side fit into hidden-query correctness? We answer these questions with one practicality benchmark, one bounded PPO diagnostic reused from the earlier JMLR appendix, and one canonical task-specific adaptation benchmark.
+
+\subsection{Practicality benchmark: throughput against ARCLE}
+
+\paragraph{Experimental design.}
+We compare archived H100 throughput benchmarks for JaxARC and ARCLE on a single fixed ARC task. Each benchmark call executes 100 environment steps and is repeated 10 times per batch size. For JaxARC, we report steady-state throughput after the one-time JIT compilation step; ARCLE has no compile phase and is measured in its synchronous and asynchronous Python implementations. This makes the benchmark a simulator-throughput comparison on matched environment calls, not a fully matched end-to-end adaptation run.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.9\linewidth]{Figures/h100_throughput_vs_batch.pdf}
+\caption{Throughput on the archived H100 practicality benchmark. Each point reports mean environment steps per second for 100-step benchmark calls, averaged over 10 repeats on a fixed ARC task. JaxARC is measured after one-time compilation, while ARCLE is measured in its synchronous and asynchronous Python modes.}
+\label{fig:h100_throughput_vs_batch}
+\end{figure}
+
+\paragraph{Results and discussion.}
+Figure~\ref{fig:h100_throughput_vs_batch} shows a large throughput gap in favor of JaxARC. Peak JaxARC throughput reaches 101{,}311{,}134 steps/s at batch 262{,}144, while ARCLE sync peaks at 51{,}035 steps/s at batch 256 and ARCLE async peaks at 54{,}082 steps/s at batch 1 \citep{leeARCLEAbstractionReasonin2024}. On matched batch sizes, the best archived speedups are 3323.2$\times$ over ARCLE sync and 2138.9$\times$ over ARCLE async. We emphasize this result as a practicality claim rather than as a scientific finding in itself: the point is not that raw simulator throughput solves ARC, but that it makes budget ladders, ablations, and repeated task-level evaluation feasible instead of prohibitively awkward.
+
+\subsection{PPO diagnostic: observation wrappers on MiniARC}
+
+\paragraph{Experimental design.}
+This subsection reuses an earlier MiniARC pilot from the archived JMLR appendix because it still answers a useful narrow question: can a simple PPO agent learn the JaxARC interface more easily when the observation is made more informative? The pilot uses Stoix feedforward PPO with the shallow CNN baseline (\texttt{arc\_shallow\_cnn}), a 500M-step training budget, the point-action interface, a 150-step episode limit, and the balanced reward setting used throughout the early JaxARC baselines. The shallow network consists of two $3\times 3$ convolutional layers with 32 channels followed by two 128-unit MLP layers. The environment is MiniARC \citep{kimPlaygroundsAbstractionReasoning2022}, and the sweep covers seven observation configurations defined by the launcher: working grid only; working grid plus answer; working grid plus input; working grid plus contextual support examples; and the three corresponding combinations.
+
+\begin{figure}[t]
+\centering
+\begin{minipage}[t]{0.49\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{Figures/mini_success_rate_obs_config.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.49\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{Figures/mini_sps_obs_config.png}
+\end{minipage}
+\caption{Archived MiniARC observation-wrapper diagnostic reused from the JMLR appendix. Left: success-rate curves for seven observation configurations. Right: training throughput. The figure is included as a bounded diagnostic about interface learnability, not as part of the canonical support/query benchmark package.}
+\label{fig:ppo_obs_diagnostic}
+\end{figure}
+
+\paragraph{Results and discussion.}
+Two qualitative patterns are robust in Figure~\ref{fig:ppo_obs_diagnostic}. First, answer-visible configurations are much easier than configurations that hide the answer. In other words, PPO can learn to manipulate the interface when the target grid is exposed as part of the observation. Second, adding more channels does not monotonically help. The full input-plus-context-plus-answer condition does not dominate the simpler answer-visible settings, and contextual demonstrations alone do not appear sufficient for strong performance with this shallow CNN baseline. The throughput plot shows the expected cost of wider observations: as more channels are added, steps per second drop materially.
+
+This diagnostic is similar in spirit to ARCLE's initial PPO experiments, which also use a privileged single-task setting in which the answer is given to the agent and the action space is simplified aggressively \citep{leeARCLEAbstractionReasonin2024}. However, it is not a direct reproduction. ARCLE restricts the agent to color operations with rectangular selection on tasks up to $5\times 5$, uses a transformer encoder, and studies architectural choices such as non-factorized policies and auxiliary losses. Our MiniARC pilot instead sweeps JaxARC observation wrappers under a simple CNN plus point-action stack. The shared lesson is narrower and still useful: privileged target access can make PPO learning possible, but that does not imply hidden-query generalization under the canonical ARC protocol.
+
+\subsection{Canonical task-specific adaptation benchmark}
+
+\paragraph{Experimental design.}
+The main benchmark uses the repository's task-level adaptation runner to allocate a fixed per-task interaction budget on support examples and then evaluate the adapted policy on hidden query inputs whose targets remain masked from the agent-visible state. The canonical ARC-AGI-1 series uses 27 entry-level training tasks from ARC-AGI-1 \citep{cholletMeasureIntelligence2019}. We report a no-adaptation anchor together with three PPO variants: feedforward PPO, pretrained feedforward PPO, and recurrent PPO. All completed AGI1 canonical runs share the same task-facing interface: point actions, all three observation wrappers enabled, a 150-step episode limit, balanced reward shaping, and a restricted operation set $\{0,\ldots,9,33,34\}$. The budget ladder is 0, 10k, 50k, and 100k environment timesteps per task, with greedy evaluation on 4 episodes per task. To test whether the same pattern appears away from ARC-AGI-1, we also include completed 10k--100k feedforward PPO series on MiniARC and ConceptARC \citep{kimPlaygroundsAbstractionReasoning2022,moskvichevConceptARCBenchmarkEvaluating2023}.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.92\linewidth]{Figures/agi1_budgeted_profile.pdf}
+\caption{Canonical ARC-AGI-1 task-specific adaptation benchmark. Support similarity improves with budget for the completed PPO variants, and submitted-query rate can rise as well, but hidden-query exact success remains at zero throughout the completed canonical series.}
+\label{fig:agi1_budgeted_profile}
+\end{figure}
+
+\paragraph{Results and discussion.}
+Figure~\ref{fig:agi1_budgeted_profile} captures the main result of the paper. Support-side adaptation is measurable, but hidden-query correctness stays flat at zero. On ARC-AGI-1, the no-adaptation anchor starts at mean support similarity 0.432. At the strongest completed budget, feedforward PPO reaches 0.463, pretrained feedforward PPO reaches 0.513, and recurrent PPO reaches 0.496. Despite these support-side gains, query exact success, query final-grid match, and query similarity remain 0.000 for every completed canonical ARC-AGI-1 series.
+
+The same pattern persists when we broaden the dataset tier. On MiniARC, feedforward PPO reaches support similarity 0.708 at 100k while query exact remains 0.000. On ConceptARC, feedforward PPO reaches 0.797 at 100k while query exact again remains 0.000. Submission behavior can change without producing correct hidden-query answers: on ARC-AGI-1, feedforward PPO reaches a submitted-query rate of 0.741 at 100k and pretrained feedforward PPO reaches 0.519, yet both remain at zero hidden-query exact success.
+
+The support-to-query gap is also visible at the task level. At 100k, 5/27 ARC-AGI-1 feedforward PPO tasks and 6/27 ARC-AGI-1 pretrained PPO tasks reach support similarity at least 0.8 while still recording zero query exact success. On ConceptARC, the same pattern appears on 36/50 tasks, including 5/50 tasks that reach support similarity 1.0 and still have zero hidden-query exact success. These counts matter because they rule out the easy interpretation that the benchmark is merely observing uniformly weak policies. The policies do learn to fit support examples, and in many cases they fit them quite well. What the benchmark reveals is that this support-side fit does not transfer to the held-out query targets under the canonical protocol.
+
+That support/query separation is the central empirical result of the paper. Current PPO-style inner-loop adaptation changes the agent's behavior, improves support similarity, and can even increase willingness to submit answers on hidden queries. In the completed canonical series, however, those changes never become hidden-query correctness.
