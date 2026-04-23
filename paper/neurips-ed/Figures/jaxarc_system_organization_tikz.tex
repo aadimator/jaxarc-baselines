@@ -1,0 +1,168 @@
+\newcommand{\figstack}[1]{\shortstack[c]{#1}}
+
+\begin{tikzpicture}[
+  x=1cm,
+  y=1cm,
+  font=\sffamily,
+  >={Latex[length=2.2mm]},
+  line cap=round,
+  line join=round,
+  panel/.style={
+    draw,
+    rounded corners=10pt,
+    line width=0.95pt,
+    minimum height=9.70cm,
+    inner sep=0pt
+  },
+  hostpanel/.style={panel, fill=brown!6, draw=brown!38!black, minimum width=4.80cm},
+  corepanel/.style={panel, fill=blue!7, draw=blue!42!black, minimum width=6.55cm},
+  evalpanel/.style={panel, fill=orange!7, draw=orange!48!black, minimum width=4.80cm},
+  box/.style={
+    draw=black!16,
+    fill=white,
+    rounded corners=6pt,
+    line width=0.82pt,
+    align=center,
+    inner sep=6.5pt,
+    font=\sffamily\scriptsize,
+    text badly ragged
+  },
+  corebox/.style={box, draw=blue!20!black},
+  supportbox/.style={box, fill=blue!4, draw=blue!32!black},
+  querybox/.style={box, fill=orange!4, draw=orange!36!black},
+  wrapperbox/.style={box, fill=green!4, draw=green!34!black},
+  supportmetricbox/.style={box, fill=blue!3, draw=blue!24!black},
+  querymetricbox/.style={box, fill=orange!3, draw=orange!26!black},
+  checkbox/.style={box, fill=orange!5, draw=orange!55!black, line width=0.95pt},
+  interfaceband/.style={draw=green!24!black, fill=green!3, rounded corners=9pt, line width=0.78pt},
+  policybox/.style={box, fill=blue!3, draw=blue!35!black, font=\sffamily\footnotesize},
+  paneltitle/.style={font=\sffamily\bfseries\fontsize{11.5}{13.5}\selectfont, text=black!92, align=left},
+  panelchip/.style={draw, rounded corners=4pt, line width=0.7pt, inner xsep=5pt, inner ysep=2.5pt, font=\sffamily\bfseries\tiny},
+  sidenote/.style={font=\sffamily\scriptsize, text=black!52, align=center},
+  flow/.style={-Latex, line width=0.95pt, draw=blue!72!black},
+  evalflow/.style={-Latex, line width=1.0pt, draw=orange!82!black, dash pattern=on 4pt off 3pt},
+  legendpill/.style={draw, rounded corners=5pt, line width=0.7pt, fill=white, inner xsep=5pt, inner ysep=2pt, font=\sffamily\tiny}
+]
+
+% Panels with matched inter-column gaps
+\node[hostpanel] (host) at (-6.225,0) {};
+\node[corepanel] (core) at (0,0) {};
+\node[evalpanel] (eval) at (6.225,0) {};
+
+% Panel chips and titles
+\node[panelchip, fill=brown!12, draw=brown!40!black, text=brown!50!black, anchor=north west]
+  at ([xshift=0.34cm,yshift=-0.34cm]host.north west) {host-side};
+\node[paneltitle, text width=3.95cm, anchor=north west]
+  at ([xshift=0.34cm,yshift=-0.82cm]host.north west) {Offline task\\preparation};
+
+\node[panelchip, fill=blue!12, draw=blue!42!black, text=blue!55!black, anchor=north west]
+  at ([xshift=0.38cm,yshift=-0.34cm]core.north west) {compiled core};
+\node[paneltitle, text width=4.10cm, anchor=north west]
+  at ([xshift=0.34cm,yshift=-0.82cm]core.north west) {Compiled JAX core};
+
+\node[panelchip, fill=orange!13, draw=orange!48!black, text=orange!70!black, anchor=north west]
+  at ([xshift=0.34cm,yshift=-0.34cm]eval.north west) {evaluator};
+\node[paneltitle, text width=4.10cm, anchor=north west]
+  at ([xshift=0.34cm,yshift=-0.82cm]eval.north west) {Benchmark\\evaluation};
+
+% Policy: centered to the whole figure and the core panel
+\node[policybox, minimum width=4.95cm, anchor=south] (policy)
+  at ($(core.north)+(0,0.58cm)$)
+  {\figstack{\textbf{Agent / adaptation policy}\\PPO-style baseline or\\other task-specific learner}};
+
+% Host column with uniform spacing
+\node[box, minimum width=3.55cm, anchor=north] (sources) at ($(host.center)+(0,2.65)$)
+  {\figstack{\textbf{ARC task sources}\\ \\ MiniARC, ConceptARC,\\ARC-AGI-1, ARC-AGI-2}};
+
+\node[box, minimum width=3.55cm, anchor=north] (parsers) at ([yshift=-0.65cm]sources.south)
+  {\figstack{\textbf{Parsers + named subsets}\\ \\ Normalize ARC JSON\\resolve named subsets}};
+
+\node[box, minimum width=3.55cm, anchor=north] (buffer) at ([yshift=-0.65cm]parsers.south)
+  {\figstack{\textbf{Fixed-shape task buffer}\\ \\ Padded grids + masks\\support pairs, query inputs\\stored hidden query targets}};
+
+\node[sidenote, text width=3.60cm] at ([yshift=-0.75cm]buffer.south)
+  {Built once, then reused by \texttt{reset}, \texttt{jit}, and vectorized evaluation.};
+
+% Core column: compact and vertically aligned
+\node[interfaceband, minimum width=5.90cm, minimum height=1.62cm] (iface)
+  at ($(core.center)+(0,2.00)$) {};
+\node[panelchip, fill=green!10, draw=green!34!black, text=green!35!black, anchor=south west]
+  at ([xshift=0.16cm,yshift=0.03cm]iface.north west) {agent-facing interface};
+
+\node[wrapperbox, minimum width=2.08cm] (actionwrap) at ($(iface.center)+(-1.6,0)$)
+  {\figstack{\textbf{Action wrappers}\\point / box / flat\\to mask edits}};
+
+\node[wrapperbox, minimum width=2.08cm] (obswrap) at ($(iface.center)+(1.28,0)$)
+  {\figstack{\textbf{Observation wrappers}\\grid + optional\\input / target / context}};
+
+\node[corebox, minimum width=4.95cm, anchor=north] (reset) at ([yshift=-0.45cm]iface.south)
+  {\figstack{{\bfseries Compiled }\texttt{reset}/\texttt{step} {\bfseries core}\\sample a task and pair\\initialize the working grid and masks}};
+
+\node[supportbox, minimum width=2.08cm, anchor=north] (support) at ([xshift=-1.35cm,yshift=-0.45cm]reset.south)
+  {\figstack{\textbf{Support mode}\\visible target\\reward shaping}};
+
+\node[querybox, minimum width=2.08cm, anchor=north] (query) at ([xshift=1.30cm,yshift=-0.45cm]reset.south)
+  {\figstack{\textbf{Query mode}\\held-out input only\\target hidden}};
+
+\node[corebox, minimum width=4.95cm, anchor=north] (state) at ([yshift=-4.25cm]iface.south)
+  {\figstack{\textbf{Explicit environment state}\\working grid, input grid, target view\\clipboard, step count, task index}};
+
+% Evaluator column with uniform spacing
+\node[box, minimum width=3.70cm, anchor=north] (transition) at ($(eval.center)+(0,2.65)$)
+  {\figstack{\textbf{Transition output}\\terminal grid + submit signal\\reward path + termination}};
+
+\node[supportmetricbox, minimum width=3.70cm, anchor=north] (supportmetrics) at ([yshift=-0.45cm]transition.south)
+  {\figstack{\textbf{Support-side metrics}\\success, final match\\similarity, solve steps}};
+
+\node[checkbox, minimum width=3.70cm, anchor=north] (hiddencheck) at ([yshift=-0.45cm]supportmetrics.south)
+  {\figstack{\textbf{Evaluator-only hidden-query check}\\compare the submitted grid\\against stored hidden targets}};
+
+\node[querymetricbox, minimum width=3.70cm, anchor=north] (querymetrics) at ([yshift=-0.45cm]hiddencheck.south)
+  {\figstack{\textbf{Logged query metrics}\\query success, similarity\\submission rate, truncation}};
+
+% Interface / core arrows
+\coordinate (ifacein) at (iface.north);
+\coordinate (ifaceout) at (iface.south);
+\coordinate (resetin) at (reset.north);
+\draw[flow] (policy.south) -- (ifacein);
+\draw[flow] (ifaceout) -- (resetin);
+
+% Host internal arrows
+\draw[flow] (sources.south) -- (parsers.north);
+\draw[flow] (parsers.south) -- (buffer.north);
+
+% Core internal arrows: perfectly vertical from reset to modes to state
+\coordinate (resetleft) at (support.center |- reset.south);
+\coordinate (resetright) at (query.center |- reset.south);
+\coordinate (stateleft) at (support.center |- state.north);
+\coordinate (stateright) at (query.center |- state.north);
+
+\draw[flow] (resetleft) -- (support.north);
+\draw[flow] (resetright) -- (query.north);
+\draw[flow] (support.south) -- (stateleft);
+\draw[flow] (query.south) -- (stateright);
+
+% Cross-panel arrows
+\coordinate (bufferblue) at ([yshift=0.20cm]buffer.east);
+\draw[flow] (bufferblue) -- ++(0.55cm,0) |- (reset.west);
+\coordinate (stateout) at ([xshift=0.32cm]core.east |- state.east);
+\draw[flow] (state.east) -- (stateout) |- (transition.west);
+
+\coordinate (hiddenstart) at ([yshift=-0.36cm]buffer.east);
+\coordinate (hiddenlane) at ([yshift=-0.16cm]state.south);
+\coordinate (hiddenelbow) at ($(hiddenstart)+(0.32cm,0)$);
+\coordinate (hiddenroutea) at (hiddenelbow |- hiddenlane);
+\coordinate (hiddenrouteb) at ([xshift=-0.40cm]hiddencheck.west |- hiddenlane);
+\draw[evalflow] (hiddenstart) -- (hiddenelbow) |- (hiddenroutea) -- (hiddenrouteb) |- (hiddencheck.west);
+
+% Evaluator internal arrows (centered vertical stack)
+\draw[flow] (transition.south) -- (supportmetrics.north);
+\draw[flow] (supportmetrics.south) -- (hiddencheck.north);
+\draw[flow] (hiddencheck.south) -- (querymetrics.north);
+
+% Legend
+\node[legendpill, anchor=north, text=black!72, draw=black!20, fill=white]
+  at ([yshift=0.10cm]core.south)
+  {\textcolor{blue!70!black}{solid blue = simulator / policy-visible flow} \qquad \textcolor{orange!75!black}{dashed orange = evaluator-only hidden-target flow}};
+
+\end{tikzpicture}
