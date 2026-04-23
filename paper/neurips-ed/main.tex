@@ -17,6 +17,8 @@
 \usepackage{microtype}
 \usepackage{xcolor}
 \usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,calc,fit,positioning}
 
 \title{JaxARC: A JAX-native environment for reinforcement learning and adaptation on ARC}
 
@@ -38,14 +40,7 @@
 
 \input{sections/jaxarc_environment}
 
-\section{A compute-budgeted support-to-query adaptation protocol for ARC}
-\input{sections/protocol}
-
-\section{Baselines}
-\input{sections/baselines}
-
-\section{Results}
-\input{sections/results}
+\input{sections/experiments_and_results}
 
 \section{Discussion}
 \input{sections/discussion}

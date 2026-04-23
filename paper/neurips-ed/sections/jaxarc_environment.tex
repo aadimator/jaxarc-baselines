@@ -4,7 +4,7 @@ Turning the Abstraction and Reasoning Corpus (ARC) into a reinforcement learning
 
 Mapping this meta-learning structure to the statically shaped tensors required by JAX-native accelerator code is difficult. Grid geometries vary wildly across tasks, ranging from $1 \times 1$ to $30 \times 30$, and the number of support and query pairs differs from task to task. Moreover, a valid evaluation protocol depends on keeping the held-out targets available for scoring without ever exposing them to the policy. JaxARC resolves these constraints through a stateless, functional architecture that keeps both the environment logic and the policy executing entirely on the GPU.
 
-\subsection{System Architecture and Configuration}
+\subsection{System Architecture}
 
 JaxARC enforces a strict functional separation between offline task preparation, compiled environment execution, and benchmark evaluation. As illustrated in Figure~\ref{fig:jaxarc_system_organization}, the architecture operates across three distinct lanes.
 
@@ -48,7 +48,7 @@ Because generating a full $30 \times 30$ binary mask is difficult for standard p
 
 The observation side mirrors this configurability. The base observation is just the current working grid. Optional wrappers allow researchers to append the original input grid, the clipboard state, the visible target grid, or contextual support pairs from the same task. This separation lets researchers vary the perceptual interface available to the agent without changing the task semantics or evaluation logic underneath.
 
-\subsection{Reward Shaping and Diagnostic Logging}
+\subsection{Reward Shaping}
 
 The true objective in ARC is sparse and submit-based: the agent only succeeds if its final submitted grid is a perfect, pixel-for-pixel match with the target. JaxARC explicitly implements this exact-match objective, awarding a success bonus only when the agent formally submits and the similarity reaches 1.0. 
 
