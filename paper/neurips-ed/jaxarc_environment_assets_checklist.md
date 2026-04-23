@@ -39,7 +39,7 @@ Save most performance plots for the results or practicality section.
     - submit step -> hidden-target scoring -> metrics.
   - **Key message:** JaxARC is not just a fast simulator; it is a benchmark substrate that keeps evaluation-correct information flow.
   - **Why it belongs in a figure:** This is an information-flow story.
-  - **Current draft:** `Figures/jaxarc_benchmark_flow.svg` with export target `Figures/jaxarc_benchmark_flow.pdf`.
+  - **Current draft:** `Figures/jaxarc_system_organization_tikz.tex` rendered directly in LaTeX.
   - **Design decision:** Keep hidden-query exact scoring in a distinct evaluator-only lane fed by the terminal submitted grid and the stored hidden targets in the task buffer. This avoids implying that the query-time masked `target_grid` shown to the agent is itself the evaluator target.
 
 - [ ] **Table: design choices and why they matter**
@@ -137,11 +137,11 @@ These assets have been copied into `paper/neurips-ed/Figures/` for local use and
 
 ## Chosen architecture figure for the current draft
 
-- [x] `Figures/jaxarc_benchmark_flow.svg` — new main-text architecture / flow figure.
+- [x] `Figures/jaxarc_system_organization_tikz.tex` — new LaTeX-native main-text system organization figure.
   - **Recommended role:** the architecture companion to `Figures/viz_complete_task.pdf`.
-  - **Why this version is better:** it emphasizes information flow, support/query branching, wrapper locality, and evaluator-only hidden-target scoring instead of presenting JaxARC as a generic software dependency diagram.
-  - **Recommended placement:** after the `System organization` or `Task representation and hidden-query semantics` discussion, depending on final page pressure.
-  - **Caption seed:** a benchmark-flow caption is drafted in `Figures/jaxarc_benchmark_flow_notes.md`.
+  - **Why this version is better:** it emphasizes information flow, wrapper locality, explicit state and parameter objects, and evaluator-only hidden-target scoring without looking like a generic software dependency chart.
+  - **Recommended placement:** immediately after the `System organization` discussion.
+  - **Status:** integrated into `sections/jaxarc_environment.tex` as Figure `fig:jaxarc_system_organization`.
 
 ## Best asset to make first
 
