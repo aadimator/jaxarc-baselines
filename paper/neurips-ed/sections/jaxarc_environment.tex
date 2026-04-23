@@ -6,14 +6,18 @@ Mapping this meta-learning structure to the statically shaped tensors required b
 
 \subsection{System Architecture and Configuration}
 
-JaxARC enforces a strict separation between offline task preparation, compiled environment execution, and benchmark evaluation. ARC-style JSON tasks are parsed once, filtered into custom subsets (e.g., grouped by specific cognitive concepts or difficulty tiers), and packed into a fixed-shape JAX buffer on the accelerator. 
+JaxARC enforces a strict functional separation between offline task preparation, compiled environment execution, and benchmark evaluation. As illustrated in Figure~\ref{fig:jaxarc_system_organization}, the architecture operates across three distinct lanes.
 
-The compiled core of the environment operates purely on explicit \texttt{EnvParams}, \texttt{State}, and canonical mask-based actions. This clean separation allows users to swap out different reward strategies, action wrappers, or observation configurations via Hydra YAML files without forcing the underlying simulator to recompile. Meanwhile, exact hidden-query scoring runs in a dedicated evaluator lane, comparing the submitted terminal grid directly against the stored hidden targets. Figure~\ref{fig:jaxarc_system_organization} summarizes this architecture.
+On the host side, raw ARC JSON files from datasets ranging from MiniARC to ARC-AGI-2 are parsed, normalized, and packed into a fixed-shape task buffer. This buffer holds the padded grids, active area masks, and the true hidden query targets. This static buffer is built exactly once offline and transferred to the accelerator, where it is reused across all vectorized environments to eliminate host-device synchronization bottlenecks.
+
+The compiled JAX core contains the stateless \texttt{reset} and \texttt{step} logic. It exposes an agent-facing interface where lightweight action and observation wrappers translate discrete policy decisions into internal mask operations. Inside the core, execution branches into either a support mode, which exposes visible targets and shaped rewards, or a query mode, where the target is entirely hidden from the explicit environment state. 
+
+Finally, the evaluator lane processes transition outputs to compute benchmark metrics safely. Support-side metrics are computed using the visible states, but hidden-query evaluation runs in an isolated path. The evaluator compares the submitted terminal grid directly against the true hidden targets retrieved straight from the task buffer. This guarantees the policy never receives the held-out answers through the observation or reward channels, while still computing exact benchmark metrics entirely on the accelerator.
 
 \begin{figure*}[t]
 \centering
 \resizebox{0.97\textwidth}{!}{\input{Figures/jaxarc_system_organization_tikz}}
-\caption{System organization of JaxARC. Offline task preparation normalizes ARC datasets and subset definitions into a fixed-shape task buffer. \texttt{EnvParams} package this buffer with reward and episode-mode configuration for the compiled \texttt{reset}/\texttt{step} core. Action and observation wrappers alter the agent-facing interface without modifying the underlying simulator. Support episodes expose visible targets for adaptation, query episodes mask the target in the agent-visible state, and exact hidden-query metrics are computed in a separate evaluator lane by comparing the submitted terminal grid against stored hidden targets.}
+\caption{System organization of JaxARC. The architecture is divided into three lanes: host-side offline preparation, the compiled JAX core, and the benchmark evaluator. The host packs datasets into a static task buffer. The core manages the agent-facing wrappers and the split between support and query modes. An isolated evaluator flow (dashed orange) pulls stored hidden targets directly from the buffer to score query submissions without ever exposing them to the policy state.}
 \label{fig:jaxarc_system_organization}
 \end{figure*}
 
