@@ -3,26 +3,32 @@
 
 We study JaxARC from three complementary angles. We first ask whether the environment is practical enough to support repeated, compute-budgeted adaptation studies at the scale required by the benchmark. We then report a smaller MiniARC diagnostic that isolates how the observation interface affects PPO learning under simplified, partially privileged conditions. Finally, we turn to the main benchmark: task-specific adaptation under a strict separation between visible support pairs and hidden query pairs. Each experiment serves a distinct purpose. The throughput study establishes practicality, the MiniARC diagnostic provides a limited sanity check that the interface is learnable under easier conditions, and the canonical benchmark addresses the main scientific question of the paper: whether support-side adaptation carries over to hidden-query success.
 
-\subsection{Practicality benchmark: throughput against ARCLE}
+\subsection{Throughput}
 
 \paragraph{Experimental design.}
-We begin with a direct throughput comparison against ARCLE \citep{leeARCLEAbstractionReasonin2024}, since the value of an accelerator-native environment depends on the scale of evaluation it makes feasible. The benchmark uses a fixed ARC task on three hardware platforms---an Apple M2 Pro CPU, an NVIDIA RTX 3090 GPU, and an NVIDIA H100 GPU---and measures mean environment steps per second over 100-step benchmark calls, repeated 10 times at each batch size. For JaxARC, we report steady-state throughput after the one-time compilation step. The figure shows single-device JIT results on all three platforms and, on the H100 host, an additional \texttt{pmap} configuration. ARCLE is measured in its synchronous and asynchronous Python implementations, neither of which has a compile phase. The comparison is intentionally narrow: it isolates simulator throughput on matched environment calls rather than full end-to-end training cost.
+The value of an accelerator-native environment depends on the scale of evaluation it makes feasible. To establish this, the simulator throughput of JaxARC is compared against ARCLE \citep{leeARCLEAbstractionReasonin2024} using a fixed ARC task. The protocol uses 100 steps per environment with auto-reset on episode termination. Batch sizes vary from $2^0$ to $2^{20}$ (1 to 1,048,576 environments). Each configuration is repeated 10 times to measure mean environment steps per second. Hardware environments include an Apple M2 Pro CPU, an NVIDIA GeForce RTX 3090 GPU, and an NVIDIA H100 GPU.
+
+JaxARC throughput is recorded after the initial JIT compilation phase to isolate steady-state execution. ARCLE operates without a compile phase and is evaluated in both synchronous and asynchronous Python modes. The metric isolates simulator step cost and excludes end-to-end policy updates.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.9\linewidth]{Figures/throughput_combined_linear.pdf}
-\caption{Throughput (steps/second) vs number of parallel environments on CPU (left), RTX 3090 (center), and H100 (right). JaxARC scales near-linearly while ARCLE saturates due to Python and multiprocessing overhead.}
+\caption{Throughput (steps/second) vs number of parallel environments on CPU (left), RTX 3090 (center), and H100 (right). JaxARC scales near-linearly, while ARCLE saturates due to Python and multiprocessing overhead.}
 \label{fig:throughput_combined_linear}
 \end{figure}
 
 \paragraph{Results.}
-Figure~\ref{fig:throughput_combined_linear} shows the same qualitative pattern across all three platforms: JaxARC scales strongly with batch size and accelerator capability, while ARCLE remains bounded in the tens-of-thousands of steps per second range. Speedups are modest at small scales (1--256 environments) where Python overhead is amortized, but grow dramatically at large scales where ARCLE's per-step interpreter costs and inter-process communication overhead dominate. 
+Figure~\ref{fig:throughput_combined_linear} illustrates throughput scaling across batch sizes. JaxARC exhibits near-linear scaling on all platforms, whereas ARCLE saturates and hits a hard performance ceiling around 60,000 steps per second regardless of hardware. 
 
-Table~\ref{tab:performance} compares best-case performance at matched batch sizes where both frameworks have data. At $131{,}072$ parallel environments on the H100, JaxARC achieves a $3{,}323\times$ speedup over ARCLE's synchronous mode. At higher batch sizes, ARCLE configurations consistently crashed the system, resulting in missing data points. JaxARC continues scaling, reaching $101.3$M steps/s with single-device JIT and $790.4$M steps/s with \texttt{pmap} on the H100 host.
+Table~\ref{tab:performance} details the peak performance at matched batch sizes where both frameworks ran successfully. On GPU platforms, a crossover occurs around 32 environments. Below this scale, the fixed overhead of JAX kernel dispatch and host-device transfer gives ARCLE's lightweight Python loop a latency advantage. Above 32 environments, JaxARC amortizes this overhead and its throughput increases dramatically. 
+
+The magnitude of the speedup grows linearly with batch size. At 131,072 parallel environments, JaxARC achieves a 903$\times$ speedup on the RTX 3090 and a 5,439$\times$ speedup on the H100. At larger batch sizes, ARCLE configurations crash due to memory exhaustion from OS-level process duplication. JaxARC continues scaling, peaking at 101.3 million steps per second with single-device JIT and 790.4 million steps per second via \texttt{pmap} on the H100. A full breakdown of matched batch-size throughput is available in Appendix~\ref{app:throughput}.
+
+Removing the Python simulation bottleneck allows budget ladders, cross-dataset comparisons, and systematic diagnostics to be executed practically under a single protocol. The support-to-query gap analysis presented in the following sections relies on this capability to run thousands of compute-budgeted adaptation processes at scale.
 
 \begin{table}[t]
 \centering
-\caption{Peak throughput at matched batch sizes. Best speedup is achieved when comparing identical batch sizes where both frameworks have valid measurements.}
+\caption{Peak throughput at matched batch sizes. Speedup compares identical batch sizes where both frameworks successfully recorded measurements.}
 \label{tab:performance}
 \begin{tabular}{@{}lrrrr@{}}
 \toprule
@@ -30,14 +36,12 @@ Table~\ref{tab:performance} compares best-case performance at matched batch size
 \midrule
 CPU (M2 Pro) & 65,536 & 789K & 21K & 38$\times$ \\
 RTX 3090 & 131,072 & 32.6M & 36K & 903$\times$ \\
-H100 GPU & 131,072 & 86.7M & 26K & 3,323$\times$ \\
+H100 GPU & 131,072 & 142M & 26K & 5,439$\times$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-This result is best read as an enabling condition for the rest of the paper. The claim is not that simulator throughput is itself a scientific result about ARC. The point is that JaxARC makes repeated task-level evaluation practical across a range of hardware settings, with the largest gains appearing on modern accelerators. Budget ladders, cross-dataset comparisons, and follow-up diagnostics can therefore be run systematically under one protocol instead of being bottlenecked by a Python simulator. That practicality matters because the central contribution of the paper is evaluative. Without an environment that supports this scale cheaply and reliably, the support-to-query analysis developed below would be much harder to carry out cleanly.
-
-\subsection{PPO diagnostic: observation wrappers on MiniARC}
+\subsection{Observation wrappers on MiniARC}
 
 \paragraph{Experimental design.}
 Before turning to the canonical benchmark, we report a smaller diagnostic on MiniARC \citep{kimPlaygroundsAbstractionReasoning2022}. Its purpose is narrow: to ask whether a simple PPO agent becomes easier to train when the observation exposes more of the task structure. This experiment is not meant to demonstrate hidden-query generalization. Several of its observation conditions are intentionally privileged because they reveal the answer grid directly.
