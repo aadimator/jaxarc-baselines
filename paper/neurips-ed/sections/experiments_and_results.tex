@@ -6,19 +6,36 @@ We study JaxARC from three complementary angles. We first ask whether the enviro
 \subsection{Practicality benchmark: throughput against ARCLE}
 
 \paragraph{Experimental design.}
-We begin with a direct throughput comparison against ARCLE \citep{leeARCLEAbstractionReasonin2024}, since the value of an accelerator-native environment depends on the scale of evaluation it makes feasible. The benchmark uses a fixed ARC task on an H100 GPU and measures mean environment steps per second over 100-step benchmark calls, repeated 10 times at each batch size. For JaxARC, we report steady-state throughput after the one-time JIT compilation step. ARCLE is measured in its synchronous and asynchronous Python implementations, neither of which has a compile phase. The comparison is therefore intentionally narrow: it measures simulator throughput on matched environment calls rather than full end-to-end training cost.
+We begin with a direct throughput comparison against ARCLE \citep{leeARCLEAbstractionReasonin2024}, since the value of an accelerator-native environment depends on the scale of evaluation it makes feasible. The benchmark uses a fixed ARC task on three hardware platforms---an Apple M2 Pro CPU, an NVIDIA RTX 3090 GPU, and an NVIDIA H100 GPU---and measures mean environment steps per second over 100-step benchmark calls, repeated 10 times at each batch size. For JaxARC, we report steady-state throughput after the one-time compilation step. The figure shows single-device JIT results on all three platforms and, on the H100 host, an additional \texttt{pmap} configuration. ARCLE is measured in its synchronous and asynchronous Python implementations, neither of which has a compile phase. The comparison is intentionally narrow: it isolates simulator throughput on matched environment calls rather than full end-to-end training cost.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=0.9\linewidth]{Figures/h100_throughput_vs_batch.pdf}
-\caption{Throughput on the H100 practicality benchmark. Each point reports mean environment steps per second for 100-step benchmark calls, averaged over 10 repeats on a fixed ARC task. JaxARC is measured after one-time compilation, while ARCLE is measured in its synchronous and asynchronous Python modes.}
-\label{fig:h100_throughput_vs_batch}
+\includegraphics[width=0.9\linewidth]{Figures/throughput_combined_linear.pdf}
+\caption{Throughput (steps/second) vs number of parallel environments on CPU (left), RTX 3090 (center), and H100 (right). JaxARC scales near-linearly while ARCLE saturates due to Python and multiprocessing overhead.}
+\label{fig:throughput_combined_linear}
 \end{figure}
 
 \paragraph{Results.}
-Figure~\ref{fig:h100_throughput_vs_batch} shows a large steady-state throughput advantage for JaxARC. Peak JaxARC throughput reaches 101{,}311{,}134 steps/s at batch 262{,}144. ARCLE peaks at 51{,}035 steps/s in synchronous mode at batch 256 and 54{,}082 steps/s in asynchronous mode at batch 1. On matched batch sizes, the largest measured speedups are 3323.2$\times$ over ARCLE sync and 2138.9$\times$ over ARCLE async.
+Figure~\ref{fig:throughput_combined_linear} shows the same qualitative pattern across all three platforms: JaxARC scales strongly with batch size and accelerator capability, while ARCLE remains bounded in the tens-of-thousands of steps per second range. Speedups are modest at small scales (1--256 environments) where Python overhead is amortized, but grow dramatically at large scales where ARCLE's per-step interpreter costs and inter-process communication overhead dominate. 
 
-This result is best read as an enabling condition for the rest of the paper. The claim is not that simulator throughput is itself a scientific result about ARC. The claim is that JaxARC makes repeated task-level evaluation practical: budget ladders, cross-dataset comparisons, and follow-up diagnostics can be run systematically under one protocol. That practicality matters because the central contribution of the paper is evaluative. Without an environment that supports this scale cheaply and reliably, the support-to-query analysis developed below would be much harder to carry out cleanly.
+Table~\ref{tab:performance} compares best-case performance at matched batch sizes where both frameworks have data. At $131{,}072$ parallel environments on the H100, JaxARC achieves a $3{,}323\times$ speedup over ARCLE's synchronous mode. At higher batch sizes, ARCLE configurations consistently crashed the system, resulting in missing data points. JaxARC continues scaling, reaching $101.3$M steps/s with single-device JIT and $790.4$M steps/s with \texttt{pmap} on the H100 host.
+
+\begin{table}[t]
+\centering
+\caption{Peak throughput at matched batch sizes. Best speedup is achieved when comparing identical batch sizes where both frameworks have valid measurements.}
+\label{tab:performance}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Platform} & \textbf{Batch Size} & \textbf{JaxARC} & \textbf{ARCLE} & \textbf{Speedup} \\
+\midrule
+CPU (M2 Pro) & 65,536 & 789K & 21K & 38$\times$ \\
+RTX 3090 & 131,072 & 32.6M & 36K & 903$\times$ \\
+H100 GPU & 131,072 & 86.7M & 26K & 3,323$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This result is best read as an enabling condition for the rest of the paper. The claim is not that simulator throughput is itself a scientific result about ARC. The point is that JaxARC makes repeated task-level evaluation practical across a range of hardware settings, with the largest gains appearing on modern accelerators. Budget ladders, cross-dataset comparisons, and follow-up diagnostics can therefore be run systematically under one protocol instead of being bottlenecked by a Python simulator. That practicality matters because the central contribution of the paper is evaluative. Without an environment that supports this scale cheaply and reliably, the support-to-query analysis developed below would be much harder to carry out cleanly.
 
 \subsection{PPO diagnostic: observation wrappers on MiniARC}
 
@@ -60,14 +77,14 @@ We report five task-aggregated metrics. \emph{Support similarity} measures how c
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.92\linewidth]{Figures/agi1_budgeted_profile.pdf}
-\caption{Canonical ARC-AGI-1 task-specific adaptation benchmark. Increasing the inner-loop budget improves support-side fitting and can change hidden-query submission behavior, but it does not produce hidden-query exact success in the reported series.}
+\caption{Canonical ARC-AGI-1 task-specific adaptation benchmark. Left: mean support similarity after support-only adaptation. Middle: submitted-query rate on hidden queries. Right: hidden-query exact success rate. Increasing the inner-loop budget changes support-side fit and query-submission behavior, but hidden-query exact success remains at zero throughout the reported series.}
 \label{fig:agi1_budgeted_profile}
 \end{figure}
 
 \paragraph{Results.}
-Figure~\ref{fig:agi1_budgeted_profile} presents the central empirical result of the paper. On ARC-AGI-1, the no-adaptation anchor begins at mean support similarity 0.432. At the largest reported budget, feedforward PPO reaches 0.463, pretrained feedforward PPO reaches 0.513, and recurrent PPO reaches 0.496. These are genuine support-side changes. They show that task-specific optimization alters policy behavior and can improve fit to the visible support targets.
+Figure~\ref{fig:agi1_budgeted_profile} presents the central empirical result of the paper in three panels. The left panel shows measurable support-side adaptation. On ARC-AGI-1, the no-adaptation anchor begins at mean support similarity 0.432. At the largest reported budget, feedforward PPO reaches 0.463, pretrained feedforward PPO reaches 0.513, and recurrent PPO reaches 0.496. These are real changes in fit to the visible support targets, even if the gains are modest in absolute terms.
 
-What does not change is hidden-query correctness. Across the ARC-AGI-1 series, query exact success rate, query final-grid match rate, and query similarity remain 0.000. Submission behavior does change. At 100k, feedforward PPO and recurrent PPO each submit on 0.741 of hidden-query episodes, while pretrained feedforward PPO submits on 0.519. However, none of these submissions become exact hidden-query solutions.
+The middle and right panels show why support fitting is not the same as hidden-query solving. Submission behavior changes substantially with budget: at 100k, feedforward PPO and recurrent PPO each submit on 0.741 of hidden-query episodes, while pretrained feedforward PPO submits on 0.519 after starting much higher at 0.778 at 10k. But the right panel stays flat. Query exact success remains 0.000 for every baseline at every reported budget. The same flat-zero pattern also holds for query final-grid match and query similarity in these canonical series, so increased willingness to submit does not translate into hidden-query correctness.
 
 The same separation appears outside ARC-AGI-1. At 100k, feedforward PPO reaches support similarity 0.708 on MiniARC and 0.797 on ConceptARC, while query exact success remains 0.000 in both series. The gap is also visible at the task level. On ARC-AGI-1, 5/27 feedforward PPO tasks and 6/27 pretrained PPO tasks reach support similarity at least 0.8 while still recording zero query exact success. On ConceptARC, the same pattern appears on 36/50 tasks, including 5/50 tasks that reach support similarity 1.0 and still have zero hidden-query exact success.
 
