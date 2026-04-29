@@ -1,0 +1,113 @@
+defaults:
+  - logger: wandb
+  - arch: anakin
+  - system: ppo/ff_ppo
+  - network: arc_shallow_cnn_hwc
+  - env: jaxarc/default
+  - dataset: mini_arc
+  - reward: balanced
+  - action: raw
+  - _self_
+
+arch:
+  seed: 42
+  total_timesteps: 5000000
+  total_num_envs: 504
+  num_evaluation: 20
+  num_eval_episodes: 32
+  evaluation_greedy: true
+  absolute_metric: false
+
+system:
+  rollout_length: 25
+  epochs: 4
+  num_minibatches: 8
+  decay_learning_rates: false
+  normalize_observations: false
+
+hydra:
+  searchpath:
+    - file://stoix/stoix/configs
+    - file://configs
+    - pkg://jaxarc.conf
+
+environment:
+  max_episode_steps: 100
+  debug_level: "minimal"
+  auto_reset: true
+
+logging:
+  log_operations: false
+  log_rewards: false
+  log_frequency: 50
+  batched_logging_enabled: true
+
+storage:
+  base_output_dir: "outputs/research/arcle_style_mini_easy"
+  run_name: "arcle_style_ff_ppo_mini_easy_5m"
+  episodes_dir: "episodes"
+  debug_dir: "debug"
+  visualization_dir: "visualizations"
+  logs_dir: "logs"
+  max_episodes_per_run: 400
+  max_storage_gb: 30.0
+  cleanup_policy: "manual"
+  create_run_subdirs: true
+  clear_output_on_start: false
+
+visualization:
+  enabled: false
+  episode_summaries: false
+  step_visualizations: false
+
+wandb:
+  enabled: false
+  project_name: "jaxarc-experiments"
+  entity: null
+  tags: ["jaxarc", "arcle-style", "mini-easy", "ff-ppo", "5m"]
+  notes: "ARCLE-style MiniARC-easy PPO verification run with answer-visible observations and bbox actions."
+  group: null
+  job_type: "arcle-style"
+  offline_mode: false
+  save_code: true
+
+grid_initialization:
+  demo_weight: 1.0
+  permutation_weight: 0.0
+  empty_weight: 0.0
+  random_weight: 0.0
+  permutation_types: [rotate, reflect, color_remap]
+  random_density: 0.3
+  random_pattern_type: sparse
+
+logger:
+  base_exp_path: results/arcle_style_mini_easy/stoix_logs
+  loggers:
+    console:
+      enabled: true
+    wandb:
+      enabled: false
+    neptune:
+      enabled: false
+    json:
+      enabled: true
+    tensorboard:
+      enabled: false
+  checkpointing:
+    save_model: false
+    load_model: false
+
+env:
+  wrapper: null
+  action:
+    mode: bbox
+  scenario:
+    name: Mini-easy
+    task_name: mini_easy_arcle_style_ff_ppo
+  observation_wrappers:
+    answer_grid: true
+    input_grid: false
+    contextual: false
+
+# Keep Stoix's evaluator target on episode_return. ARCLE-style success is
+# tracked explicitly via actor-side `arcle_success_rate` / `success_rate_fraction`.

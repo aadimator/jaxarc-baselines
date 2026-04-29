@@ -48,7 +48,9 @@ def combined_custom_metrics(metrics: Metrics) -> Metrics:
     # It safely returns the dict unmodified if extended metrics aren't present.
     # Note: jaxarc_custom_metrics is JAX-based, so convert back/forth if needed,
     # though it currently handles numpy arrays fine.
-    return jaxarc_custom_metrics(metrics)
+    metrics = jaxarc_custom_metrics(metrics)
+
+    return metrics
 
 
 __all__ = ["combined_custom_metrics"]
