@@ -52,13 +52,8 @@ RUNS_ROOT = (
     / "mixed_10m_5seed_conc5"
     / "runs"
 )
-OUT_DIR = (
-    REPO_ROOT
-    / "results"
-    / "navix_style_subset_benchmark"
-    / "mixed_10m_5seed_conc5"
-    / "figures"
-)
+
+OUT_DIR = REPO_ROOT / "paper" / "neurips-ed" / "Figures"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ── ✏️  CONFIGURE TASKS HERE ─────────────────────────────────────────────────
@@ -73,18 +68,29 @@ TASKS_TO_PLOT: list[str] = [
     # "agi1_single_easy",
     "agi1_tedious",
     # ConceptARC tasks
+    # "concept_abovebelow",
     "concept_center",
+    # "concept_cleanup",
+    # "concept_completeshape",
+    # "concept_copy",
     "concept_count",
+    # "concept_extendtoboundary",
     "concept_extractobjects",
     "concept_fillednotfilled",
+    # "concept_horizontalvertical",
     "concept_insideoutside",
+    # "concept_movetoboundary",
+    # "concept_order",
     # "concept_samedifferent",
     "concept_topbottom2d",
+    # "concept_topbottom3d",
 ]
+
+SHOW_DATASET_TITLE = True
 
 # ── dataset identity ──────────────────────────────────────────────────────────
 DATASET_CFG: dict[str, dict] = {
-    "agi1": {"label": "ARC-AGI", "subdir": "agi1"},
+    "agi1": {"label": "ARC-AGI 1", "subdir": "agi1"},
     "concept": {"label": "ConceptARC", "subdir": "concept"},
 }
 
@@ -239,7 +245,7 @@ def make_figure(
         # Build title: "Task Name (Dataset)"
         ds_label = DATASET_CFG[dataset_of(task)]["label"]
         task_label = TASK_LABELS.get(task, task)
-        title = f"{task_label} ({ds_label})"
+        title = f"{task_label} ({ds_label})" if SHOW_DATASET_TITLE else task_label
         ax.set_title(title, fontsize=8.5, pad=3)
         style_ax(ax)
 
@@ -319,7 +325,7 @@ def make_figure(
         ncol=len(algo_handles),
         fontsize=9,
         frameon=False,
-        bbox_to_anchor=(0.5, 0.001),
+        bbox_to_anchor=(0.5, -0.001),
         handlelength=2.5,
         columnspacing=1.5,
     )
@@ -362,7 +368,7 @@ def main():
     make_figure(
         metric="success_ratio",
         ylabel="Success Rate",
-        out_stem="combined_success_rate_navix_style",
+        out_stem="combined_success_rate",
         tasks=tasks,
         n_cols=3,
         clip_lo=0.0,
@@ -394,7 +400,7 @@ def main():
     make_figure(
         metric="episode_return_mean",
         ylabel="Episodic Return",
-        out_stem="combined_episode_return_navix_style",
+        out_stem="combined_episode_return",
         tasks=tasks,
         n_cols=3,
         clip_lo=0.0,
