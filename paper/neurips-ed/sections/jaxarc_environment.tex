@@ -6,7 +6,7 @@ Mapping this task structure to the statically shaped tensors required by JAX-nat
 
 \subsection{System Architecture}
 
-JaxARC enforces a functional separation between offline task preparation, compiled environment execution, and benchmark evaluation. As shown in Figure~\ref{fig:jaxarc_system_organization}, the architecture operates across three lanes. Appendix~\ref{app:environment_details} gives additional implementation details.
+JaxARC enforces a functional separation between offline task preparation, compiled environment execution, and benchmark evaluation. As shown in Figure~\ref{fig:jaxarc_system_organization}, the architecture operates across three lanes. Appendix~\ref{app:system_components} gives the corresponding implementation-level component summary.
 
 On the host side, raw ARC JSON files from datasets ranging from MiniARC to ARC-AGI-2 are parsed, normalized, and packed into a fixed-shape task buffer. This buffer holds the padded grids, active area masks, and the true hidden query targets. This static buffer is built exactly once offline and transferred to the accelerator, where it is reused across all vectorized environments to eliminate host-device synchronization bottlenecks.
 
@@ -29,13 +29,20 @@ This memory layout preserves ARC's natural task organization. A single task stat
 
 Figure~\ref{fig:jaxarc_task_view} illustrates this task structure on two ARC tasks. Support pairs are presented with both inputs and outputs visible, while the held-out query is presented with its output hidden.
 
-\begin{figure}[t]
+\begin{figure}[htbp]
 \centering
-\includegraphics[width=0.74\linewidth]{Figures/arc_example_952a094c.pdf}
-
-\vspace{0.15em}
-
-\includegraphics[width=0.74\linewidth]{Figures/arc_example_eb5a1d5d.pdf}
+\begin{minipage}[t]{0.49\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{Figures/arc_example_952a094c.pdf}
+    \vspace{-0.4em}
+    \small (a) Task \texttt{952a094c}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.49\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{Figures/arc_example_eb5a1d5d.pdf}
+    \vspace{-0.4em}
+    \small (b) Task \texttt{eb5a1d5d}
+\end{minipage}
 \caption{Task-level views for two ARC-AGI-1 tasks in JaxARC. In each task, support pairs provide input-output demonstrations, while the held-out query is shown without its target output. The policy interacts only with the visible grids; the true query target remains internal for exact scoring.}
 \label{fig:jaxarc_task_view}
 \end{figure}

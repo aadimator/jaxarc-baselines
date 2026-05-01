@@ -6,14 +6,27 @@ This appendix specifies the environment design, dataset groupings, baseline sett
 \subsection{System components}
 \label{app:system_components}
 
-JaxARC is organized around four functional components. Dataset parsers convert ARC-style task files into a shared task representation. A registry maps dataset names and subset identifiers to task ids. A task buffer stores padded, fixed-shape arrays for inputs, outputs, masks, and metadata, which allows reset and transition functions to be compiled by XLA. Action and observation wrappers then adapt the base mask-action environment to the policy interface used by each experiment.
+JaxARC separates dataset preparation, compiled environment execution, wrapper adaptation, and metric computation. This separation is important for ARC because the policy-facing state cannot expose hidden query targets, while the evaluator still needs those targets for exact scoring. Table~\ref{tab:system_components} summarizes the main implementation components and where each one executes.
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.82\linewidth]{Figures/jaxarc_system_architecture.pdf}
-    \caption{Implementation structure of JaxARC. Host-side parsers and registries prepare fixed-shape task buffers. The compiled environment core implements reset and transition logic. Lightweight wrappers expose different action and observation interfaces without changing the underlying task semantics.}
-    \label{fig:architecture_appendix}
-\end{figure}
+\begin{table}[htbp]
+\centering
+\caption{Implementation components in JaxARC. Host-side work is limited to parsing and buffer construction; episode execution and metric computation use fixed-shape arrays on the accelerator.}
+\label{tab:system_components}
+\small
+\begin{tabular}{@{}p{0.23\linewidth}p{0.42\linewidth}p{0.26\linewidth}@{}}
+\toprule
+\textbf{Component} & \textbf{Role} & \textbf{Execution boundary} \\
+\midrule
+Dataset parsers & Load ARC-style JSON tasks and normalize grid metadata & Host, before training \\
+Task registry & Map dataset and subset names to task ids & Host, before buffer build \\
+Task buffer & Store padded grids, masks, task ids, and hidden targets & Built on host, reused on device \\
+Compiled core & Implement stateless \texttt{reset}, \texttt{step}, and termination logic & JIT-compiled accelerator code \\
+Action wrappers & Convert agent actions into operation ids and selection masks & Pure JAX transformations \\
+Observation wrappers & Add input, answer, clipboard, or support-context channels & Pure JAX transformations \\
+Evaluator & Compute return, exact success, submission, and similarity metrics & Accelerator-side array operations \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsection{Task and transition visualization}
 \label{app:visualization}
@@ -57,63 +70,58 @@ JaxARC includes visualization modes for ARC tasks and environment transitions. T
 \subsection{Minimal API example}
 \label{app:usage}
 
-The environment follows the standard JAX pattern: random keys are explicit, state is passed explicitly, and batching is obtained with JAX transformations. The example below constructs a MiniARC task, resets one environment, takes one sampled action, and then resets 1024 environments in parallel.
+The environment follows the standard JAX pattern: random keys are explicit, state is passed explicitly, and batching is obtained with JAX transformations. The example below constructs a MiniARC task, compiles batched reset and step functions, and advances 1024 environments in parallel.
 
-\begin{verbatim}
+\begin{lstlisting}[style=jaxarcpython]
 import jax
-import jax.numpy as jnp
 from jaxarc import make
 
 env, env_params = make("Mini-Most_Common_color_l6ab0lf3xztbyxsu3p",
                        auto_download=True)
 
+num_envs = 1024
 key = jax.random.PRNGKey(0)
-state, timestep = env.reset(key, env_params=env_params)
+reset_keys = jax.random.split(key, num_envs)
 
 action_space = env.action_space(env_params)
-key, subkey = jax.random.split(key)
-action = action_space.sample(subkey)
-state, timestep = env.step(state, action, env_params=env_params)
+reset_one = lambda k: env.reset(k, env_params=env_params)
+states, timesteps = jax.jit(jax.vmap(reset_one))(reset_keys)
 
-num_envs = 1024
-key, *reset_keys = jax.random.split(key, num_envs + 1)
-reset_keys = jnp.asarray(reset_keys)
+key, action_key = jax.random.split(key)
+action_keys = jax.random.split(action_key, num_envs)
+actions = jax.vmap(action_space.sample)(action_keys)
 
-reset_many = jax.vmap(env.reset, in_axes=(0, None))
-states, timesteps = reset_many(reset_keys, env_params)
-\end{verbatim}
+step_one = lambda state, action: env.step(
+    state, action, env_params=env_params
+)
+states, timesteps = jax.jit(jax.vmap(step_one))(states, actions)
+\end{lstlisting}
 
 \section{Datasets and task subsets}
 \label{app:datasets}
 
-JaxARC supports ARC-AGI, ConceptARC, and MiniARC through dataset-specific parsers. ARC grids retain their native bounds: heights and widths range from 1 to 30, with up to 10 colors. The ARC-AGI parser supports up to 10 support pairs and up to 3 query pairs per task.
-
-Experiments refer to task collections using scenario names such as \texttt{AGI1-entry}, \texttt{AGI1-hard\_eval}, \texttt{Mini-all}, and \texttt{Concept-Count}. These names identify subsets before training begins; the compiled environment then samples tasks from the corresponding task buffer.
+JaxARC treats each dataset as a parser plus a set of named task collections. Parsers preserve ARC's native grid bounds: heights and widths range from 1 to 30, with up to 10 colors. The packed task buffer stores support inputs, support outputs, query inputs, query targets, masks, and task metadata under fixed shapes. Scenario names such as \texttt{AGI1-entry}, \texttt{Mini-all}, and \texttt{Concept-Count} select task ids before training begins; the compiled environment then samples from the selected buffer.
 
 \subsection{ARC-AGI groupings}
 \label{app:arcagi_subsets}
 
-The ARC-AGI subset names used in this paper follow the ARC-Game levels file at \url{https://github.com/volotat/ARC-Game/blob/main/tasks/levels.json}. ARC-Game describes these groupings as subjective; the associated issue discussion notes that there is no objective criterion for the split definitions.\footnote{\url{https://github.com/volotat/ARC-Game/issues/7}} We therefore use names such as \emph{entry}, \emph{easy}, \emph{medium}, \emph{hard}, \emph{multiple solutions}, and \emph{tedious} as externally supplied stratification labels. They are not official ARC-AGI difficulty levels, and they should not be read as calibrated estimates of task difficulty.
+For ARC-AGI-1 stratification, we use the task lists distributed with the ARC-Game levels file at \url{https://github.com/volotat/ARC-Game/blob/main/tasks/levels.json}. These labels serve as reporting strata for a heterogeneous benchmark sweep, but they are not official ARC-AGI metadata. The ARC-Game repository notes that the splits have no formal criterion and should be treated as subjective.\footnote{\url{https://github.com/volotat/ARC-Game/issues/7}} We therefore avoid interpreting differences among these labels as calibrated difficulty measurements.
 
 \begin{table}[htbp]
 \centering
-\caption{ARC-AGI-1 task groupings used by JaxARC. Counts give the number of task ids assigned to each named grouping. The groupings are externally supplied and need not form disjoint partitions.}
+\caption{ARC-AGI-1 groupings used in the main baseline figure. Counts give task ids assigned to each ARC-Game label. The labels are subjective and need not form disjoint partitions.}
 \label{tab:agi1_subset_counts}
 \small
-\begin{tabular}{@{}lrlr@{}}
+\begin{tabular}{@{}lr@{}}
 \toprule
-\textbf{Grouping} & \textbf{Tasks} & \textbf{Grouping} & \textbf{Tasks} \\
+\textbf{Grouping} & \textbf{Tasks} \\
 \midrule
-\texttt{entry} & 33 & \texttt{entry\_train} & 27 \\
-\texttt{entry\_eval} & 6 & \texttt{easy} & 304 \\
-\texttt{easy\_train} & 210 & \texttt{easy\_eval} & 94 \\
-\texttt{medium} & 263 & \texttt{medium\_train} & 103 \\
-\texttt{medium\_eval} & 160 & \texttt{hard} & 66 \\
-\texttt{hard\_train} & 19 & \texttt{hard\_eval} & 47 \\
-\texttt{multiple\_solutions} & 33 & \texttt{multiple\_solutions\_train} & 14 \\
-\texttt{multiple\_solutions\_eval} & 19 & \texttt{tedious} & 73 \\
-\texttt{tedious\_train} & 26 & \texttt{tedious\_eval} & 73 \\
-\texttt{single\_easy} & 1 & & \\
+\texttt{entry} & 33 \\
+\texttt{easy} & 304 \\
+\texttt{medium} & 263 \\
+\texttt{hard} & 66 \\
+\texttt{multiple\_solutions} & 33 \\
+\texttt{tedious} & 73 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -121,7 +129,7 @@ The ARC-AGI subset names used in this paper follow the ARC-Game levels file at \
 \subsection{ConceptARC and MiniARC}
 \label{app:concept_mini}
 
-ConceptARC is organized by concept group. The version used in these experiments contains 16 groups with 10 tasks each: AboveBelow, Center, CleanUp, CompleteShape, Copy, Count, ExtendToBoundary, ExtractObjects, FilledNotFilled, HorizontalVertical, InsideOutside, MoveToBoundary, Order, SameDifferent, TopBottom2D, and TopBottom3D. MiniARC contains 149 tasks. The main baseline figure reports a representative subset of ConceptARC groups and ARC-AGI groupings; Appendix~\ref{app:extended_baselines} gives the larger per-dataset breakdown.
+ConceptARC is organized by concept group. The version used in these experiments contains 16 groups with 10 tasks each: AboveBelow, Center, CleanUp, CompleteShape, Copy, Count, ExtendToBoundary, ExtractObjects, FilledNotFilled, HorizontalVertical, InsideOutside, MoveToBoundary, Order, SameDifferent, TopBottom2D, and TopBottom3D. MiniARC contains 149 tasks. The main baseline figure reports six ConceptARC groups and six ARC-AGI groupings; Appendix~\ref{app:extended_baselines} gives the larger per-dataset breakdown.
 
 \section{Configuration axes}
 \label{app:configuration_surface}
@@ -425,7 +433,9 @@ Batch Size & JaxARC SPS & Mode & ARCLE SPS & Mode & Speedup \\
 \section{Extended baseline results}
 \label{app:extended_baselines}
 
-This section gives the per-dataset plots corresponding to the baseline summary in Section~\ref{sec:baselines}. Figure~\ref{fig:combined_success_rate} reports exact-match success rate for the same panel layout as the main episodic-return figure. Figures~\ref{fig:agi1_episode_return_full}--\ref{fig:concept_success_rate_full} separate the ARC-AGI and ConceptARC panels.
+The extended baseline figures separate shaped editing progress from exact task solving. Episodic return increases on several ARC-AGI and ConceptARC subsets, especially for PPO, but exact success remains substantially lower. This gap indicates that the agents often learn partial edits, reward-shaping behavior, or frequent submissions without reliably producing the full target grid.
+
+Across ARC-AGI groupings, PPO is strongest, REINFORCE is usually the closest competitor, and the value-based methods remain lower across most panels. ConceptARC shows larger variation across concept groups. Count is the clearest positive case for the shallow CNN policy-gradient agents, whereas several other groups show moderate shaped return with much weaker exact success. These per-family curves are therefore more informative than a single aggregate score, which would mix qualitatively different learning regimes.
 
 \begin{figure}[htbp]
 \centering
@@ -461,6 +471,7 @@ This section gives the per-dataset plots corresponding to the baseline summary i
 \caption{Success rate across all 16 ConceptARC concept groups.}
 \label{fig:concept_success_rate_full}
 \end{figure}
+\FloatBarrier
 
 \section{Observation-wrapper diagnostic details}
 \label{app:observation_diagnostic}
