@@ -1,32 +1,17 @@
-% Purpose:
-% Frame the paper as an ED-track contribution: environment + baselines + analysis.
-%
-% Must do:
-% - Introduce ARC as a challenging RL domain (sparse rewards, diverse tasks, combinatorial actions).
-% - Explain why existing CPU-bound environments bottleneck research.
-% - Introduce JaxARC as the solution to that bottleneck.
-% - Preview the empirical contributions: throughput, observation analysis, multi-algorithm baselines.
-% - End with a crisp contributions list.
-%
-% Keep out:
-% - TTRL / support-to-query gap / hidden-query framing.
-% - Long API or implementation detail.
-% - Any implication that the baselines solve ARC.
-
 The Abstraction and Reasoning Corpus (ARC) tests an AI system's ability to infer rules from a few examples \citep{cholletMeasureIntelligence2019}. While most approaches treat ARC as a static problem solved via program synthesis \citep{alfordNeuralGuidedBidirectionalProgram2022} or large language models \citep{buttCodeItSelfimprovingLanguage2024,batorskiNSANeurosymbolicARC2025}, an alternative framing casts it as a reinforcement learning domain. In this view, an agent starts from an input grid, applies sequential edits, observes intermediate states, and eventually submits an answer. ARCLE \citep{leeARCLEAbstractionReasonin2024} introduced this perspective by building a Gymnasium-compatible ARC environment and running baseline PPO experiments. The RL formulation naturally captures the sequential editing process and creates a setting where sparse feedback, vast action spaces, and task diversity interact in ways that standard RL benchmarks rarely require.
 
-Scaling RL experiments on ARC, however, is difficult. Modern RL depends on massive parallelism across hardware accelerators. When the environment runs on the CPU, as in ARCLE and other Python-based wrappers, the simulator becomes the primary bottleneck. This is not unique to ARC. Grid-world RL research faced the same constraint until JAX-based reimplementations of MiniGrid \citep{pignatelliNAVIXScalingMiniGrid2025}, board games \citep{koyamadaPgxHardwareAcceleratedParallel2023}, and combinatorial domains \citep{bonnetJumanjiDiverseSuite2023} made large-scale studies practical. With ARCLE limited to roughly 60,000 steps per second regardless of hardware, even a single training run over millions of steps is expensive, and the kind of systematic sweeps needed to compare algorithms, ablate hyperparameters, and characterize performance across task families becomes prohibitive.
+Scaling RL experiments on ARC, however, is difficult. Modern RL depends on massive parallelism across hardware accelerators. When the environment runs on the CPU, as in ARCLE and other Python-based wrappers, the simulator becomes the primary bottleneck. This is not unique to ARC. Grid-world RL research faced the same constraint until JAX-based reimplementations of MiniGrid \citep{pignatelliNAVIXScalingMiniGrid2025}, board games \citep{koyamadaPgxHardwareAcceleratedParallel2023}, and combinatorial domains \citep{bonnetJumanjiDiverseSuite2023} made large-scale studies practical. With ARCLE limited to roughly 60\,000 steps per second regardless of hardware, even a single training run over millions of steps is expensive, and the kind of systematic sweeps needed to compare algorithms, ablate hyperparameters, and characterize performance across task families becomes prohibitive.
 
-To close this gap, we introduce JaxARC, a JAX-native environment that runs ARC entirely on hardware accelerators. JaxARC uses a stateless, functional design with fixed-shape tensor buffers, and natively supports major datasets including ARC-AGI \citep{cholletARCAGI2NewChallenge2025}, ConceptARC \citep{moskvichevConceptARCBenchmarkEvaluating2023}, and MiniARC \citep{kimPlaygroundsAbstractionReasoning2022}. On an H100 GPU, JaxARC executes over 100 million steps per second---more than three orders of magnitude faster than ARCLE at the same batch size.
+To close this gap, we introduce JaxARC, a JAX-native environment that runs ARC entirely on hardware accelerators. JaxARC uses a stateless, functional design with fixed-shape tensor buffers, and natively supports major datasets including ARC-AGI \citep{cholletARCAGI2NewChallenge2025}, ConceptARC \citep{moskvichevConceptARCBenchmarkEvaluating2023}, and MiniARC \citep{kimPlaygroundsAbstractionReasoning2022}. On an H100 GPU, JaxARC executes over 100 million steps per second, more than three orders of magnitude faster than ARCLE at the same batch size.
 
-This throughput turns previously impractical experiments into routine ones. We use it to build the first multi-algorithm RL baseline benchmark for ARC. We evaluate PPO, DQN, PQN, and REINFORCE across six ARC-AGI difficulty tiers and six ConceptARC concept groups, running each condition for 10 million steps with five random seeds. The results establish a clear algorithm hierarchy, reveal large performance differences across task families, and provide reference curves that future work can build on. We also profile the effect of different observation wrappers on learnability and throughput, offering practical guidance on interface design.
+This throughput turns previously impractical experiments into routine ones. We use it to build a set of multi-algorithm RL baselines for ARC. We evaluate PPO, DQN, PQN, and REINFORCE across multiple ARC-AGI 1 difficulty tiers and ConceptARC concept groups, running each condition for 10 million steps with five random seeds. The results show a consistent algorithm ordering, large performance differences across task families, and provide reference curves that future work can build on. We also profile the effect of different observation wrappers on learnability and throughput, offering practical guidance on interface design.
 
-We make the following contributions:
+The main contributions of this work are:
 
 \begin{itemize}
-	\item We release JaxARC, an open-source, JAX-native RL environment for ARC that achieves over 100 million steps per second on a single GPU, a $5{,}400\times$ speedup over ARCLE at matched batch sizes.
-	\item We provide the first multi-algorithm baseline benchmark for ARC, evaluating four RL algorithms across 12 task subsets from ARC-AGI and ConceptARC, with five seeds each.
-	\item We characterize the computational and learning effects of different observation wrappers, establishing which interface configurations improve learnability and at what throughput cost.
+	\item A fully JAX-native, open-source RL environment for ARC that reaches over 100 million steps per second on a single GPU, a 5\,400$\times$ speedup over ARCLE at matched batch sizes.
+	\item A set of RL baselines for ARC, evaluating four algorithms across multiple task subsets from ARC-AGI 1 and ConceptARC, with five seeds each.
+	\item A characterization of the computational and learning effects of different observation wrappers, showing which interface configurations improve learnability and at what throughput cost.
 \end{itemize}
 
-Together, these contributions make ARC substantially more accessible as an RL research domain. JaxARC provides the simulation speed needed for systematic experimentation, and the baselines provide concrete reference points for measuring progress.
+Together, these contributions make ARC more accessible as an RL research domain. JaxARC provides the simulation speed needed for systematic experimentation, and the baselines provide concrete reference points for measuring progress.

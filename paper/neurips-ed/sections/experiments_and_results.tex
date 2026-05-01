@@ -1,12 +1,12 @@
 \section{Experiments and results}
 \label{sec:experiments}
 
-We evaluate JaxARC from three angles. First, we profile raw simulator throughput to establish that the environment makes large-scale RL studies on ARC practical. Second, we run a diagnostic on MiniARC to characterize how different observation configurations affect learnability and computational cost. Third, we present a multi-algorithm baseline benchmark spanning six ARC-AGI difficulty tiers and six ConceptARC concept groups, reporting episodic return and success rate over 10 million environment steps with five seeds per condition.
+We evaluate JaxARC from three angles. First, we profile raw simulator throughput to show that the environment makes large-scale RL studies on ARC practical. Second, we run a diagnostic on MiniARC to characterize how different observation configurations affect learnability and computational cost. Third, we present a multi-algorithm baseline sweep spanning multiple difficulty tiers from ARC-AGI 1 and multiple concept groups from ConceptARC, reporting episodic return and success rate over 10 million environment steps with five seeds per condition.
 
 \subsection{Throughput}
 
 \paragraph{Experimental design.}
-To quantify the practical advantage of accelerator-native simulation, we compare JaxARC's throughput against ARCLE \citep{leeARCLEAbstractionReasonin2024} on a fixed ARC task. The protocol uses 100 steps per environment with auto-reset on episode termination. Batch sizes range from $2^0$ to $2^{20}$ (1 to 1,048,576 parallel environments). Each configuration is repeated 10 times and we report mean environment steps per second. We benchmark on three platforms: an Apple M2 Pro CPU, an NVIDIA RTX 3090 GPU, and an NVIDIA H100 GPU.
+To quantify the practical advantage of accelerator-native simulation, we compare JaxARC's throughput against ARCLE \citep{leeARCLEAbstractionReasonin2024} on a fixed ARC task. The protocol uses 100 steps per environment with auto-reset on episode termination. Batch sizes range from $2^0$ to $2^{20}$ (1 to 1\,048\,576 parallel environments). Each configuration is repeated 10 times and we report mean environment steps per second. We benchmark on three platforms: an Apple M2 Pro CPU, an NVIDIA RTX 3090 GPU, and an NVIDIA H100 GPU.
 
 JaxARC throughput is recorded after JIT compilation to isolate steady-state performance. ARCLE operates without a compilation phase and is evaluated in both synchronous and asynchronous modes. The metric captures simulator step cost only and excludes policy-update overhead.
 
@@ -18,9 +18,9 @@ JaxARC throughput is recorded after JIT compilation to isolate steady-state perf
 \end{figure}
 
 \paragraph{Results.}
-Figure~\ref{fig:throughput_combined_linear} shows throughput scaling across platforms and batch sizes. JaxARC exhibits near-linear scaling on all three platforms, whereas ARCLE saturates around 60,000 steps per second regardless of hardware.
+Figure~\ref{fig:throughput_combined_linear} shows throughput scaling across platforms and batch sizes. JaxARC scales near-linearly on all three platforms, whereas ARCLE saturates around 60\,000 steps per second regardless of hardware.
 
-Table~\ref{tab:performance} reports peak throughput at matched batch sizes where both frameworks ran successfully. On GPU platforms, a crossover occurs around 32 parallel environments: below this scale, JAX's kernel-dispatch and host-device transfer overhead makes ARCLE's lightweight Python loop faster. Above 32 environments, JaxARC amortizes this fixed cost and throughput rises rapidly. At 131,072 parallel environments, JaxARC achieves a $903\times$ speedup on the RTX 3090 and a $5{,}439\times$ speedup on the H100. At larger batch sizes, ARCLE crashes from memory exhaustion due to OS-level process duplication. JaxARC continues scaling, reaching 101.3 million steps per second with single-device JIT and 790.4 million steps per second via \texttt{pmap} on the H100. A full batch-by-batch breakdown is available in Appendix~\ref{app:throughput}.
+Table~\ref{tab:performance} reports peak throughput at matched batch sizes where both frameworks ran successfully. On GPU platforms, a crossover occurs around 32 parallel environments: below this scale, JAX's kernel-dispatch and host-device transfer overhead makes ARCLE's lightweight Python loop faster. Above 32 environments, JaxARC amortizes this fixed cost and throughput rises rapidly. At 131\,072 parallel environments, JaxARC achieves a 903$\times$ speedup on the RTX 3090 and a 5\,439$\times$ speedup on the H100. At larger batch sizes, ARCLE crashes from memory exhaustion due to OS-level process duplication. JaxARC continues scaling, reaching 101.3 million steps per second with single-device JIT and 790.4 million steps per second via \texttt{pmap} on the H100. A full batch-by-batch breakdown is available in Appendix~\ref{app:throughput}.
 
 This throughput makes it feasible to train and evaluate RL agents across hundreds of ARC tasks, multiple algorithms, and multiple seeds within the time budget of a single research project. The baselines reported in Section~\ref{sec:baselines} rely directly on this capability.
 
@@ -32,9 +32,9 @@ This throughput makes it feasible to train and evaluate RL agents across hundred
 \toprule
 \textbf{Platform} & \textbf{Batch Size} & \textbf{JaxARC} & \textbf{ARCLE} & \textbf{Speedup} \\
 \midrule
-CPU (M2 Pro) & 65,536 & 789K & 21K & 38$\times$ \\
-RTX 3090 & 131,072 & 32.6M & 36K & 903$\times$ \\
-H100 GPU & 131,072 & 142M & 26K & 5,439$\times$ \\
+CPU (M2 Pro) & 65\,536 & 789K & 21K & 38$\times$ \\
+RTX 3090 & 131\,072 & 32.6M & 36K & 903$\times$ \\
+H100 GPU & 131\,072 & 142M & 26K & 5\,439$\times$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -42,7 +42,7 @@ H100 GPU & 131,072 & 142M & 26K & 5,439$\times$ \\
 \subsection{Observation wrapper analysis on MiniARC}
 
 \paragraph{Experimental design.}
-Before the full-scale benchmark, we report a diagnostic on MiniARC \citep{kimPlaygroundsAbstractionReasoning2022} that asks a narrow question: does exposing more task structure through the observation change how easily PPO learns to edit grids? Several of the observation configurations are intentionally privileged, in that they reveal the answer grid to the agent, and the experiment is designed to probe learnability of the interface rather than to measure task-level reasoning.
+Before the full-scale sweep, we report a diagnostic on MiniARC \citep{kimPlaygroundsAbstractionReasoning2022} that asks a narrow question: does exposing more task structure through the observation change how easily PPO learns to edit grids? Several of the observation configurations are intentionally privileged, in that they reveal the answer grid to the agent. The experiment is designed to probe learnability of the interface rather than to measure task-level reasoning.
 
 We use Stoix feedforward PPO with the shallow CNN architecture (\texttt{arc\_shallow\_cnn}): two $3\times 3$ convolutional layers with 32 channels followed by two fully connected layers of width 128. Training runs for 500M steps using the point-action interface, a 150-step episode limit, and balanced reward shaping (step penalty $-0.02$, success bonus $10.0$, unsolved-submission penalty $-1.0$, similarity weight $1.0$). We sweep seven observation configurations: working grid only; working grid plus answer; working grid plus input; working grid plus contextual support examples; and the three pairwise combinations.
 
@@ -56,41 +56,41 @@ We use Stoix feedforward PPO with the shallow CNN architecture (\texttt{arc\_sha
     \centering
     \includegraphics[width=\linewidth]{Figures/mini_sps_obs_config.png}
 \end{minipage}
-\caption{MiniARC observation-wrapper diagnostic. Left: success-rate curves for seven observation configurations over 500M steps. Right: training throughput (steps per second) for each configuration. Answer-visible configurations are substantially easier, while richer observations incur measurable throughput costs.}
+\caption{MiniARC observation-wrapper diagnostic. Left: success-rate curves for seven observation configurations over 500M steps. Right: training throughput (steps per second) for each configuration. Answer-visible configurations are easier to learn, while richer observations carry measurable throughput costs.}
 \label{fig:ppo_obs_diagnostic}
 \end{figure}
 
 \paragraph{Results.}
-Figure~\ref{fig:ppo_obs_diagnostic} reveals two patterns. First, configurations that include the answer grid in the observation are substantially easier to learn than those that hide it. Under these privileged conditions, PPO learns useful editing behavior when the desired output is directly visible. Second, adding more channels to the observation does not produce monotonic improvements. Appending the input grid or contextual support demonstrations on top of the answer-visible setting does not reliably exceed the simpler answer-only configuration, and the throughput panel confirms that richer observations carry a clear computational cost.
+Figure~\ref{fig:ppo_obs_diagnostic} shows two patterns. First, configurations that include the answer grid in the observation are easier to learn than those that hide it. Under these privileged conditions, PPO learns useful editing behavior when the desired output is directly visible. Second, adding more channels to the observation does not produce monotonic improvements. Appending the input grid or contextual support demonstrations on top of the answer-visible setting does not reliably exceed the simpler answer-only configuration, and the throughput panel confirms that richer observations carry a clear computational cost.
 
-This result is methodologically analogous to the simplified answer-given experiments reported in ARCLE \citep{leeARCLEAbstractionReasonin2024}. It shows that a shallow CNN can learn the editing interface when the problem is made easy enough. At the same time, the marginal value of additional context channels is small under this architecture, suggesting that the bottleneck is not observation bandwidth but the network's capacity to use that information. We use this diagnostic as a bounded interpretive aid for the baseline results that follow: it confirms that the action space is learnable, but it does not imply that simply widening the observation will produce generalization gains on harder tasks.
+This result is methodologically analogous to the simplified answer-given experiments reported in ARCLE \citep{leeARCLEAbstractionReasonin2024}. It shows that a shallow CNN can learn the editing interface when the problem is made easy enough. At the same time, the marginal value of additional context channels is small under this architecture, suggesting that the bottleneck is not observation bandwidth but the network's capacity to use that information. We use this diagnostic as a bounded interpretive aid for the baseline results that follow: it confirms that the action space is learnable, but it does not imply that simply widening the observation will produce gains on harder tasks.
 
-\subsection{Baseline benchmark}
+\subsection{Baseline sweep}
 \label{sec:baselines}
 
 \paragraph{Experimental design.}
-The main contribution of this work is a multi-algorithm baseline benchmark that covers diverse ARC task families at scale. We evaluate four RL algorithms---PPO, DQN, PQN, and REINFORCE---on tasks drawn from two datasets: ARC-AGI-1 \citep{cholletMeasureIntelligence2019} and ConceptARC \citep{moskvichevConceptARCBenchmarkEvaluating2023}. Each algorithm is trained for 10 million environment steps per task subset, with 5 random seeds per condition. All agents use the same feedforward shallow CNN architecture described in Section~\ref{sec:experiments} and share the same task-facing interface: point actions, the input/answer/context observation stack, a 150-step episode limit, balanced reward shaping, and the restricted operation set $\{0,\ldots,9,33,34\}$.
+We evaluate four RL algorithms on tasks drawn from two datasets: ARC-AGI-1 \citep{cholletMeasureIntelligence2019} and ConceptARC \citep{moskvichevConceptARCBenchmarkEvaluating2023}. The algorithms are PPO, DQN, PQN, and REINFORCE. Each algorithm is trained for 10 million environment steps per task subset, with 5 random seeds per condition. All agents use the same feedforward shallow CNN architecture described above and share the same task-facing interface: point actions, the input/answer/context observation stack, a 150-step episode limit, balanced reward shaping, and the restricted operation set $\{0,\ldots,9,33,34\}$.
 
-From ARC-AGI-1, we benchmark on six difficulty tiers as defined by the official ARC Prize categorization: \emph{Entry}, \emph{Easy}, \emph{Medium}, \emph{Hard}, \emph{Multiple Solutions}, and \emph{Tedious}. From ConceptARC, we benchmark on six representative concept groups: \emph{Center}, \emph{Count}, \emph{Extract Objects}, \emph{Filled/Not Filled}, \emph{Inside/Outside}, and \emph{Top/Bottom 2D}. This design tests whether RL performance varies systematically with task difficulty and cognitive concept, rather than reporting a single aggregate number. Extended results for all 16 ConceptARC concept groups and all ARC-AGI subsets, including train/eval splits, are provided in Appendix~\ref{app:extended_baselines}.
+From ARC-AGI-1, we select six difficulty tiers as defined by the official ARC Prize categorization: \emph{Entry}, \emph{Easy}, \emph{Medium}, \emph{Hard}, \emph{Multiple Solutions}, and \emph{Tedious}. From ConceptARC, we select six representative concept groups: \emph{Center}, \emph{Count}, \emph{Extract Objects}, \emph{Filled/Not Filled}, \emph{Inside/Outside}, and \emph{Top/Bottom 2D}. This design tests whether RL performance varies systematically with task difficulty and cognitive concept, rather than reporting a single aggregate number. Extended results for all 16 ConceptARC concept groups and all ARC-AGI subsets, including train/eval splits, are in Appendix~\ref{app:extended_baselines}.
 
 We report two metrics: \emph{episodic return} (the cumulative shaped reward per episode, normalized to $[0, 1]$) and \emph{success rate} (the fraction of episodes in which the agent submits an exact match to the target grid).
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.95\linewidth]{Figures/combined_episode_return_navix_style.pdf}
-\caption{Episodic return across ARC-AGI difficulty tiers (top two rows) and ConceptARC concept groups (bottom two rows) for four RL algorithms trained for 10M steps, 5 seeds each. Shaded regions indicate $\pm1$ standard deviation across seeds. PPO consistently achieves the highest return, with clear separation across task families. The corresponding success-rate panel is in Appendix~\ref{app:extended_baselines}.}
+\caption{Episodic return across ARC-AGI difficulty tiers (top two rows) and ConceptARC concept groups (bottom two rows) for four RL algorithms trained for 10M steps, 5 seeds each. Shaded regions show $\pm1$ standard deviation across seeds. PPO consistently reaches the highest return, with clear separation across task families. The corresponding success-rate panel is in Appendix~\ref{app:extended_baselines}.}
 \label{fig:baseline_episode_return}
 \end{figure}
 
 \paragraph{Results.}
-Figure~\ref{fig:baseline_episode_return} shows episodic return curves across all 12 task subsets. Several patterns are consistent across the benchmark.
+Figure~\ref{fig:baseline_episode_return} shows episodic return curves across all 12 task subsets. Several patterns are consistent across the sweep.
 
-\emph{PPO dominates.} On every subset, PPO achieves the highest or tied-highest episodic return. REINFORCE is a competitive second on most ConceptARC groups. DQN and PQN trail both policy-gradient methods across the board, often remaining near their initial return throughout training. This ordering is robust across seeds and task families.
+\emph{Algorithm ordering.} On every subset, PPO reaches the highest or tied-highest episodic return. REINFORCE is a competitive second on most ConceptARC groups. DQN and PQN trail both policy-gradient methods, often remaining near their initial return throughout training. This ordering is consistent across seeds and task families.
 
-\emph{Task difficulty matters.} Within ARC-AGI, the Entry tier shows the steepest improvement, with PPO rising from roughly 0.2 to above 0.45 over 10M steps. Easy, Medium, and Tedious tiers show weaker but still measurable gains. The Hard tier is essentially flat for all four algorithms. Within ConceptARC, Count is a striking outlier: PPO reaches above 0.9 episodic return, and even REINFORCE exceeds 0.7. Most other concept groups---Center, Extract Objects, Inside/Outside, Top/Bottom 2D---plateau in the 0.3--0.5 range for PPO.
+\emph{Task-family variation.} Within ARC-AGI, the Entry tier shows the steepest improvement, with PPO rising from roughly 0.2 to above 0.45 over 10M steps. Easy, Medium, and Tedious tiers show weaker but still measurable gains. The Hard tier is essentially flat for all four algorithms. Within ConceptARC, Count is a clear outlier: PPO reaches above 0.9 episodic return, and even REINFORCE exceeds 0.7. Most other concept groups (Center, Extract Objects, Inside/Outside, Top/Bottom 2D) plateau in the 0.3--0.5 range for PPO.
 
-\emph{Variance is informative.} The shaded confidence bands reveal that some subsets are noisier than others. Count (ConceptARC) and Entry (ARC-AGI) have relatively tight bands, suggesting that performance is reproducible across seeds. Others, like Filled/Not Filled and the REINFORCE curve on Count, show wider spread, indicating higher sensitivity to initialization.
+\emph{Seed variance.} The shaded confidence bands show that some subsets are noisier than others. Count (ConceptARC) and Entry (ARC-AGI) have relatively tight bands, suggesting reproducible performance across seeds. Others, like Filled/Not Filled and the REINFORCE curve on Count, show wider spread.
 
-\emph{Training has not converged everywhere.} On several subsets---Entry, Multiple Solutions, some ConceptARC groups---PPO's return curve is still rising at 10M steps, suggesting that longer training could shift the ranking further. On others (Hard, Easy, Medium), the curves flatten early, indicating that these task families present a harder ceiling for the current architecture.
+\emph{Convergence.} On several subsets (Entry, Multiple Solutions, some ConceptARC groups), PPO's return curve is still rising at 10M steps, suggesting that longer training could shift the ranking. On others (Hard, Easy, Medium), the curves flatten early, indicating that these task families present a harder ceiling for the current architecture.
 
-These baselines serve three purposes. First, they establish that JaxARC supports full training loops for multiple standard RL algorithms at scale. Second, they provide reference performance levels that future work can build on. Third, the per-subset breakdown reveals which task families are most and least amenable to current RL methods, information that is obscured by any single aggregate metric.
+These baselines serve three purposes. First, they show that JaxARC supports full training loops for multiple standard RL algorithms at scale. Second, they provide reference performance levels that future work can build on. Third, the per-subset breakdown shows which task families are most and least amenable to current RL methods, information that is obscured by any single aggregate metric.
