@@ -17,8 +17,42 @@
 \usepackage{microtype}
 \usepackage{xcolor}
 \usepackage{graphicx}
+\usepackage{listings}
+\usepackage{placeins}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,calc,fit,positioning}
+
+\ifx\pdfsuppresswarningpagegroup\undefined\else
+  \pdfsuppresswarningpagegroup=1
+\fi
+
+\setlength{\textfloatsep}{8pt plus 2pt minus 2pt}
+\setlength{\floatsep}{8pt plus 2pt minus 2pt}
+\setlength{\intextsep}{8pt plus 2pt minus 2pt}
+
+\definecolor{codebg}{RGB}{248,248,248}
+\definecolor{codeframe}{RGB}{210,210,210}
+\definecolor{codekeyword}{RGB}{38,92,170}
+\definecolor{codestring}{RGB}{155,75,20}
+\definecolor{codecomment}{RGB}{90,120,90}
+\lstdefinestyle{jaxarcpython}{
+  language=Python,
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{codekeyword}\bfseries,
+  stringstyle=\color{codestring},
+  commentstyle=\color{codecomment},
+  backgroundcolor=\color{codebg},
+  frame=single,
+  rulecolor=\color{codeframe},
+  framerule=0.3pt,
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  tabsize=2,
+  aboveskip=0.4em,
+  belowskip=0.4em
+}
 
 \title{JaxARC: A JAX-native RL environment for the Abstraction and Reasoning Corpus}
 
