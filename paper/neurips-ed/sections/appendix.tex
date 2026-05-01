@@ -104,21 +104,21 @@ This section provides the full per-dataset breakdown of the baseline benchmark r
 
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.95\linewidth]{Figures/combined_success_rate_navix_style.pdf}
+\includegraphics[width=0.95\linewidth]{Figures/combined_success_rate.pdf}
 \caption{Success rate across all ARC-AGI difficulty tiers (top two rows) and ConceptARC concept groups (bottom two rows). This metric is much stricter than episodic return: it requires the agent to submit a pixel-perfect match to the target grid. Success rates remain low across all algorithms and task families, indicating that current model-free RL methods rarely produce exact solutions even when episodic return suggests meaningful grid-editing progress.}
 \label{fig:combined_success_rate}
 \end{figure}
 
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.95\linewidth]{Figures/agi1_episode_return_navix_style.pdf}
+\includegraphics[width=0.95\linewidth]{Figures/arcagi1_episode_return.pdf}
 \caption{Episodic return across all ARC-AGI-1 subsets, including train/eval splits. Each panel shows one ARC-AGI difficulty tier or its train/eval variant. The Entry tier shows the strongest learning signal, while Hard and Tedious tiers show minimal improvement across all four algorithms.}
 \label{fig:agi1_episode_return_full}
 \end{figure}
 
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.95\linewidth]{Figures/concept_episode_return_navix_style.pdf}
+\includegraphics[width=0.95\linewidth]{Figures/conceptarc_episode_return.pdf}
 \caption{Episodic return across all 16 ConceptARC concept groups. Count is a clear outlier where PPO achieves near-perfect return. Most other concept groups plateau in the 0.1--0.5 range. Performance variation across concept groups is larger than variation across algorithms within any single group.}
 \label{fig:concept_episode_return_full}
 \end{figure}
