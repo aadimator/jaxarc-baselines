@@ -1,13 +1,10 @@
-% Abstract recipe from `planning/neurips_ed_paper_writing_guide.md`:
-% 1. Set up the scientific problem.
-% 2. State the evaluation gap.
-% 3. Introduce JaxARC + the support-to-query protocol.
-% 4. State the main empirical result: support improves, hidden-query transfer does not.
-% 5. State the implication for evaluation and future research.
+% Abstract recipe:
+% 1. Set up the scientific problem: ARC as an RL domain.
+% 2. State the gap: CPU-bound environments bottleneck research; no multi-algorithm baselines exist.
+% 3. State the contribution: JaxARC + throughput + baseline benchmark.
+% 4. State the main empirical findings: algorithm ordering, task-family variation, observation analysis.
+% 5. State the implication: practical substrate for future ARC RL research.
 %
-% Keep the abstract to one paragraph.
-% Must include: JaxARC, compute-budgeted/support-to-query adaptation, PPO-style baselines,
-% and the support-to-query gap.
-% Avoid: solve, breakthrough, state of the art, robust transfer.
+% Keep to one paragraph. Avoid: solve, breakthrough, state of the art, robust transfer.
 
-The Abstraction and Reasoning Corpus (ARC) requires agents to infer hidden rules from a few support demonstrations and apply them to novel queries. This few-shot structure is increasingly studied through test-time adaptation, but systematic evaluation remains computationally prohibitive in standard reinforcement learning environments. To make large-scale adaptation studies practical, we introduce JaxARC: an accelerator-native RL environment capable of over 100 million steps per second. Leveraging this throughput, we propose a compute-budgeted evaluation protocol that strictly isolates support-set optimization from hidden-query testing. We evaluate a family of PPO-based baselines under this protocol. The results reveal a severe generalization gap: while allocating more test-time compute reliably improves the agent's ability to fit the visible support demonstrations, it fails to produce exact success on the hidden queries. This persistent support-to-query gap demonstrates that current RL adaptation acts as a fast memorizer rather than a reasoning engine. JaxARC provides the simulation speed and methodological rigor needed to cleanly measure this distinction and evaluate future test-time adaptation methods on ARC.
+The Abstraction and Reasoning Corpus (ARC) poses a distinctive challenge for reinforcement learning: agents must learn to edit grids through sequential actions, guided only by sparse rewards, across hundreds of structurally diverse tasks. Studying RL on ARC at scale has been impractical because existing environments run on the CPU and cap throughput at roughly 60,000 steps per second. We introduce JaxARC, an open-source, JAX-native ARC environment that runs entirely on hardware accelerators, reaching over 100 million steps per second on a single H100 GPU---a $5{,}400\times$ speedup over the prior ARCLE environment at matched batch sizes. To demonstrate what this throughput enables, we provide three contributions beyond the environment itself. First, we profile the computational overhead of different observation and action wrappers, showing that answer-visible configurations substantially improve learnability while richer observation channels carry measurable throughput costs. Second, we present the first multi-algorithm RL baseline benchmark for ARC, evaluating PPO, DQN, PQN, and REINFORCE across six ARC-AGI difficulty tiers and six ConceptARC concept groups, with five seeds and 10 million steps per condition. The results reveal a consistent algorithm hierarchy---PPO dominates, followed by REINFORCE, with DQN and PQN trailing---and large performance variation across task families, from near-perfect returns on ConceptARC Count to negligible progress on ARC-AGI Hard. JaxARC, together with these baselines and analyses, provides a practical foundation for systematic RL research on abstract reasoning.

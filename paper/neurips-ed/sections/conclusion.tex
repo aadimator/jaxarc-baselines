@@ -1,10 +1,4 @@
 % Purpose:
 % End with the evaluative takeaway, not vague optimism.
-%
-% Should say, in compact form:
-% - JaxARC enables a practical benchmark for compute-budgeted ARC adaptation.
-% - The protocol separates support fitting from hidden-query performance.
-% - Current PPO-style baselines improve the former without achieving the latter.
-% - This is exactly why the benchmark is useful.
 
-JaxARC provides an accelerator-native environment that makes compute-budgeted adaptation studies on ARC practical. By enforcing a strict protocol that isolates support-set adaptation from hidden-query evaluation, the benchmark cleanly separates memorization from abstract reasoning. Our results show that while test-time compute reliably improves support-side fitting and submission behavior across PPO baselines, it does not produce hidden-query correctness. This persistent gap is exactly why the benchmark is useful: it prevents task-specific overfitting from masquerading as generalization. JaxARC equips the field with the computational throughput and methodological rigor needed to measure true progress on ARC.
+JaxARC provides an accelerator-native RL environment that makes large-scale experimentation on ARC practical. On an H100 GPU it achieves over 100 million steps per second, more than three orders of magnitude faster than the prior ARCLE environment. We used this throughput to build the first multi-algorithm RL baseline benchmark for ARC, evaluating PPO, DQN, PQN, and REINFORCE across twelve task subsets from ARC-AGI and ConceptARC. The results establish a stable algorithm hierarchy, reveal large performance differences across task families, and show that observation interface design has a measurable effect on learnability. Together, the environment and these baselines define a practical starting point for RL research on abstract reasoning: future algorithms, architectures, and adaptation methods can be evaluated against concrete reference curves on a platform fast enough to support systematic comparison.
