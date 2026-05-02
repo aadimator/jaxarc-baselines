@@ -469,17 +469,3 @@ Across ARC-AGI groupings, PPO is strongest, REINFORCE is usually the closest com
 \label{fig:concept_success_rate_full}
 \end{figure}
 \FloatBarrier
-
-\section{Observation-wrapper diagnostic details}
-\label{app:observation_diagnostic}
-
-Our MiniARC diagnostic evaluated seven channel configurations for feedforward PPO. We intentionally included ``answer-visible'' configurations to test whether the policy can learn the editing interface itself when the target grid is provided. Figure~\ref{fig:ppo_obs_ablation_appendix} illustrates that while the target grid makes learning trivial, adding more demonstration context does not monotonically improve results and incurs measurable throughput costs.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.48\linewidth]{Figures/mini_success_rate_obs_config.png}
-\hfill
-\includegraphics[width=0.48\linewidth]{Figures/mini_sps_obs_config.png}
-\caption{MiniARC interface diagnostic. Left: success rate over training. Right: training throughput across wrapper configurations.}
-\label{fig:ppo_obs_ablation_appendix}
-\end{figure}
