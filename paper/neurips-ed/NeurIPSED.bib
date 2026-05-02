@@ -656,6 +656,22 @@ Read\_Status\_Date: 2025-10-03T02:04:36.946Z},
   file = {/Users/aadam/Zotero/storage/4SPMIC8N/Freeman et al. - 2021 - Brax -- A Differentiable Physics Engine for Large Scale Rigid Body Simulation.pdf;/Users/aadam/Zotero/storage/ZLF5RT2T/2106.html}
 }
 
+@article{galliciSimplifyingDeepTemporal2025,
+  title = {Simplifying {{Deep Temporal Difference Learning}}},
+  author = {Gallici, Matteo and Fellows, Mattie and Ellis, Benjamin and Pou, Bartomeu and Masmitja, Ivan and Foerster, Jakob and Martin, Mario},
+  year = 2025,
+  month = may,
+  journal = {International Conference on Learning Representations},
+  volume = {2025},
+  pages = {78148--78190},
+  urldate = {2026-05-02},
+  abstract = {Q-learning played a foundational role in the field reinforcement learning (RL). However, TD algorithms with off-policy data, such as Q-learning, or nonlinear function approximation like deep neural networks require several additional tricks to stabilise training, primarily a large replay buffer and target networks. Unfortunately, the delayed updating of frozen network parameters in the target network harms the sample efficiency and, similarly, the large replay buffer introduces memory and implementation overheads. In this paper, we investigate whether it is possible to accelerate and simplify off-policy TD training while maintaining its stability. Our key theoretical result demonstrates for the first time that regularisation techniques such as LayerNorm can yield provably convergent TD algorithms without the need for a target network or replay buffer, even with off-policy data. Empirically, we find that online, parallelised sampling enabled by vectorised environments stabilises training without the need for a large replay buffer. Motivated by these findings, we propose PQN, our simplified deep online Q-Learning algorithm. Surprisingly, this simple algorithm is competitive with more complex methods like: Rainbow in Atari, PPO-RNN in Craftax, QMix in Smax, and can be up to 50x faster than traditional DQN without sacrificing sample efficiency. In an era where PPO has become the go-to RL algorithm, PQN reestablishes off-policy Q-learning as a viable alternative. We open-source our code at: https://github.com/mttga/purejaxql.},
+  langid = {english},
+  annotation = {Read\_Status: New\\
+Read\_Status\_Date: 2026-05-02T16:33:53.605Z},
+  file = {/Users/aadam/Zotero/storage/ZS6JUHDD/Gallici et al. - 2025 - Simplifying Deep Temporal Difference Learning.pdf}
+}
+
 @misc{galloniCellularSubcellularSpecialization2025,
   title = {Cellular and Subcellular Specialization Enables Biology-Constrained Deep Learning},
   author = {Galloni, Alessandro R. and Peddada, Ajay and Chennawar, Yash and Milstein, Aaron D.},
@@ -819,6 +835,22 @@ Read\_Status\_Date: 2025-10-03T02:04:36.895Z},
   annotation = {Read\_Status: New\\
 Read\_Status\_Date: 2025-10-03T02:04:36.837Z},
   file = {/Users/aadam/Zotero/storage/QSU6R3KJ/Hamilton and Weitzenfeld - 2025 - Visual Place Cell Encoding A Computational Model for Spatial Representation and Cognitive Mapping.pdf;/Users/aadam/Zotero/storage/GC2ZLZRI/2504.html}
+}
+
+@inproceedings{hasseltDeepReinforcementLearning2016,
+  title = {Deep Reinforcement Learning with Double {{Q-Learning}}},
+  booktitle = {Proceedings of the {{Thirtieth AAAI Conference}} on {{Artificial Intelligence}}},
+  author = {van Hasselt, Hado and Guez, Arthur and Silver, David},
+  year = 2016,
+  month = feb,
+  series = {{{AAAI}}'16},
+  pages = {2094--2100},
+  publisher = {AAAI Press},
+  address = {Phoenix, Arizona},
+  urldate = {2026-05-02},
+  abstract = {The popular Q-learning algorithm is known to overestimate action values under certain conditions. It was not previously known whether, in practice, such overestimations are common, whether they harm performance, and whether they can generally be prevented. In this paper, we answer all these questions affirmatively. In particular, we first show that the recent DQN algorithm, which combines Q-learning with a deep neural network, suffers from substantial overestimations in some games in the Atari 2600 domain. We then show that the idea behind the Double Q-learning algorithm, which was introduced in a tabular setting, can be generalized to work with large-scale function approximation. We propose a specific adaptation to the DQN algorithm and show that the resulting algorithm not only reduces the observed overestimations, as hypothesized, but that this also leads to much better performance on several games.},
+  annotation = {Read\_Status: New\\
+Read\_Status\_Date: 2026-05-02T16:40:12.332Z}
 }
 
 @article{hayesGroundedUnderstandingAbstract2017,
@@ -1401,6 +1433,20 @@ Read\_Status\_Date: 2025-10-03T02:04:36.939Z},
   file = {/Users/aadam/Zotero/storage/RGAC32MV/Liu et al. - 2025 - Connectivity of single neurons classifies cell subtypes in mouse brains.pdf}
 }
 
+@inproceedings{luDiscoveredPolicyOptimisation2022,
+  title = {Discovered {{Policy Optimisation}}},
+  booktitle = {Advances in {{Neural Information Processing Systems}}},
+  author = {Lu, Chris and Kuba, Jakub Grudzien and Letcher, Alistair and Metz, Luke and de Witt, Christian Schroeder and Foerster, Jakob Nicolaus},
+  year = 2022,
+  month = oct,
+  urldate = {2026-05-02},
+  abstract = {Tremendous progress has been made in reinforcement learning (RL) over the past decade. Most of these advancements came through the continual development of new algorithms, which were designed using a combination of mathematical derivations, intuitions, and experimentation. Such an approach of creating algorithms manually is limited by human understanding and ingenuity. In contrast, meta-learning provides a toolkit for automatic machine learning method optimisation, potentially addressing this flaw. However, black-box approaches which attempt to discover RL algorithms with minimal prior structure have thus far not outperformed existing hand-crafted algorithms. Mirror Learning, which includes RL algorithms, such as PPO, offers a potential middle-ground starting point: while every method in this framework comes with theoretical guarantees, components that differentiate them are subject to design. In this paper we explore the Mirror Learning space by meta-learning a ``drift'' function. We refer to the immediate result as Learnt Policy Optimisation (LPO). By analysing LPO we gain original insights into policy optimisation which we use to formulate a novel, closed-form RL algorithm, Discovered Policy Optimisation (DPO). Our experiments in Brax environments confirm state-of-the-art performance of LPO and DPO, as well as their transfer to unseen settings.},
+  langid = {english},
+  annotation = {Read\_Status: New\\
+Read\_Status\_Date: 2026-05-02T16:57:02.017Z},
+  file = {/Users/aadam/Zotero/storage/XIDZMZDP/Lu et al. - 2022 - Discovered Policy Optimisation.pdf}
+}
+
 @article{madarSynapticPlasticityRules2025,
   title = {Synaptic Plasticity Rules Driving Representational Shifting in the Hippocampus},
   author = {Madar, Antoine D. and Jiang, Anqi and Dong, Can and Sheffield, Mark E. J.},
@@ -1519,6 +1565,20 @@ Read\_Status\_Date: 2025-10-05T21:30:31.006Z},
   file = {/Users/aadam/Zotero/storage/JU7R4UMW/Matthews et al. - 2024 - Kinetix Investigating the Training of General Agents through Open-Ended Physics-Based Control Tasks.pdf}
 }
 
+@inproceedings{mayorImpactOnPolicyParallelized2025,
+  title = {The {{Impact}} of {{On-Policy Parallelized Data Collection}} on {{Deep Reinforcement Learning Networks}}},
+  booktitle = {Forty-Second {{International Conference}} on {{Machine Learning}}},
+  author = {Mayor, Walter and {Obando-Ceron}, Johan and Courville, Aaron and Castro, Pablo Samuel},
+  year = 2025,
+  month = jun,
+  urldate = {2026-05-02},
+  abstract = {The use of parallel actors for data collection has been an effective technique used in reinforcement learning (RL) algorithms. The manner in which data is collected in these algorithms, controlled via the number of parallel environments and the rollout length, induces a form of bias-variance trade-off; the number of training passes over the collected data, on the other hand, must strike a balance between sample efficiency and overfitting. We conduct an empirical analysis of these trade-offs on PPO, one of the most popular RL algorithms that uses parallel actors, and establish connections to network plasticity and, more generally, optimization stability. We examine its impact on network architectures, as well as the hyper-parameter sensitivity when scaling data. Our analyses indicate that larger dataset sizes can increase final performance across a variety of settings, and that scaling parallel environments is more effective than increasing rollout lengths. These findings highlight the critical role of data collection strategies in improving agent performance.},
+  langid = {english},
+  annotation = {Read\_Status: New\\
+Read\_Status\_Date: 2026-05-02T16:57:34.419Z},
+  file = {/Users/aadam/Zotero/storage/MX3LVXM6/Mayor et al. - 2025 - The Impact of On-Policy Parallelized Data Collection on Deep Reinforcement Learning Networks.pdf}
+}
+
 @inproceedings{mcclellanPEnGUiNPartiallyEquivariant2025,
   title = {{{PEnGUiN}}: {{Partially Equivariant Graph NeUral Networks}} for {{Sample Efficient MARL}}},
   shorttitle = {{{PEnGUiN}}},
@@ -1533,6 +1593,21 @@ Read\_Status\_Date: 2025-10-05T21:30:31.006Z},
   annotation = {Read\_Status: New\\
 Read\_Status\_Date: 2025-11-26T00:04:54.933Z},
   file = {/Users/aadam/Zotero/storage/5QPL3S8M/McClellan et al. - 2025 - PEnGUiN Partially Equivariant Graph NeUral Networks for Sample Efficient MARL.pdf;/Users/aadam/Zotero/storage/SZ7BQHN2/McClellan et al. - 2025 - PEnGUiN Partially Equivariant Graph NeUral Networks for Sample Efficient MARL.pdf;/Users/aadam/Zotero/storage/K7AE6FKN/2503.html}
+}
+
+@misc{mnihPlayingAtariDeep2013,
+  title = {Playing {{Atari}} with {{Deep Reinforcement Learning}}},
+  author = {Mnih, Volodymyr and Kavukcuoglu, Koray and Silver, David and Graves, Alex and Antonoglou, Ioannis and Wierstra, Daan and Riedmiller, Martin},
+  year = 2013,
+  month = dec,
+  journal = {arXiv.org},
+  urldate = {2026-05-02},
+  abstract = {We present the first deep learning model to successfully learn control policies directly from high-dimensional sensory input using reinforcement learning. The model is a convolutional neural network, trained with a variant of Q-learning, whose input is raw pixels and whose output is a value function estimating future rewards. We apply our method to seven Atari 2600 games from the Arcade Learning Environment, with no adjustment of the architecture or learning algorithm. We find that it outperforms all previous approaches on six of the games and surpasses a human expert on three of them.},
+  howpublished = {https://arxiv.org/abs/1312.5602v1},
+  langid = {english},
+  annotation = {Read\_Status: New\\
+Read\_Status\_Date: 2026-05-02T16:39:25.090Z},
+  file = {/Users/aadam/Zotero/storage/A5YSGCLG/Mnih et al. - 2013 - Playing Atari with Deep Reinforcement Learning.pdf}
 }
 
 @article{morrisUniversallyExpressiveCommunication,
@@ -1911,6 +1986,25 @@ Read\_Status\_Date: 2025-10-06T13:47:39.077Z},
   file = {/Users/aadam/Zotero/storage/9A7XJBCK/Scharfen and Memmert - 2024 - The model of the brain as a complex system Interactions of physical, neural and mental states with.pdf;/Users/aadam/Zotero/storage/D22ZT6BF/S1053810024000679.html}
 }
 
+@misc{schulmanProximalPolicyOptimization2017,
+  title = {Proximal {{Policy Optimization Algorithms}}},
+  author = {Schulman, John and Wolski, Filip and Dhariwal, Prafulla and Radford, Alec and Klimov, Oleg},
+  year = 2017,
+  month = aug,
+  number = {arXiv:1707.06347},
+  eprint = {1707.06347},
+  primaryclass = {cs},
+  publisher = {arXiv},
+  doi = {10.48550/arXiv.1707.06347},
+  urldate = {2026-05-02},
+  abstract = {We propose a new family of policy gradient methods for reinforcement learning, which alternate between sampling data through interaction with the environment, and optimizing a "surrogate" objective function using stochastic gradient ascent. Whereas standard policy gradient methods perform one gradient update per data sample, we propose a novel objective function that enables multiple epochs of minibatch updates. The new methods, which we call proximal policy optimization (PPO), have some of the benefits of trust region policy optimization (TRPO), but they are much simpler to implement, more general, and have better sample complexity (empirically). Our experiments test PPO on a collection of benchmark tasks, including simulated robotic locomotion and Atari game playing, and we show that PPO outperforms other online policy gradient methods, and overall strikes a favorable balance between sample complexity, simplicity, and wall-time.},
+  archiveprefix = {arXiv},
+  keywords = {Computer Science - Machine Learning,MLC,PPO,RL},
+  annotation = {Read\_Status: New\\
+Read\_Status\_Date: 2026-05-02T16:44:51.133Z},
+  file = {/Users/aadam/Zotero/storage/BUSAL6MX/Schulman et al. - 2017 - Proximal Policy Optimization Algorithms.pdf;/Users/aadam/Zotero/storage/J68G9YUS/1707.html}
+}
+
 @misc{seelySudokuBenchEvaluatingCreative2025,
   title = {Sudoku-{{Bench}}: {{Evaluating}} Creative Reasoning with {{Sudoku}} Variants},
   shorttitle = {Sudoku-{{Bench}}},
@@ -2265,6 +2359,26 @@ Read\_Status\_Date: 2025-10-03T02:04:36.918Z},
   annotation = {Read\_Status: New\\
 Read\_Status\_Date: 2025-10-03T02:04:36.901Z},
   file = {/Users/aadam/Zotero/storage/HJP2RV9T/Wang et al. - 2025 - Learning to Communicate Through Implicit Communication Channels.pdf;/Users/aadam/Zotero/storage/9IMWSX33/2411.html}
+}
+
+@article{williamsSimpleStatisticalGradientfollowing1992,
+  title = {Simple Statistical Gradient-Following Algorithms for Connectionist Reinforcement Learning},
+  author = {Williams, Ronald J.},
+  year = 1992,
+  month = may,
+  journal = {Machine Learning},
+  volume = {8},
+  number = {3},
+  pages = {229--256},
+  issn = {1573-0565},
+  doi = {10.1007/BF00992696},
+  urldate = {2026-05-02},
+  abstract = {This article presents a general class of associative reinforcement learning algorithms for connectionist networks containing stochastic units. These algorithms, called REINFORCE algorithms, are shown to make weight adjustments in a direction that lies along the gradient of expected reinforcement in both immediate-reinforcement tasks and certain limited forms of delayed-reinforcement tasks, and they do this without explicitly computing gradient estimates or even storing information from which such estimates could be computed. Specific examples of such algorithms are presented, some of which bear a close relationship to certain existing algorithms while others are novel but potentially interesting in their own right. Also given are results that show how such algorithms can be naturally integrated with backpropagation. We close with a brief discussion of a number of additional issues surrounding the use of such algorithms, including what is known about their limiting behaviors as well as further considerations that might be used to help develop similar but potentially more powerful reinforcement learning algorithms.},
+  langid = {english},
+  keywords = {connectionist networks,gradient descent,mathematical analysis,Reinforcement learning},
+  annotation = {Read\_Status: New\\
+Read\_Status\_Date: 2026-05-02T16:37:36.838Z},
+  file = {/Users/aadam/Zotero/storage/K4BZ4JZR/Williams - 1992 - Simple statistical gradient-following algorithms for connectionist reinforcement learning.pdf}
 }
 
 @misc{windhagerLightweightLIFonlySNN2025,

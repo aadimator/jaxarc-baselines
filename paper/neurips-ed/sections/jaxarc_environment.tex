@@ -1,18 +1,20 @@
 \section{JaxARC as an RL Environment}\label{sec:jaxarc_environment}
 
-Turning the Abstraction and Reasoning Corpus (ARC) into a reinforcement learning environment raises several challenges. As noted by ARCLE \citep{leeARCLEAbstractionReasonin2024}, the domain demands a large combinatorial action space and provides only sparse feedback. Unlike standard RL domains where an agent navigates a single environment, ARC comprises hundreds of independent tasks, each defined by a few input-output demonstrations and one or more held-out queries. The agent must edit a grid through sequential actions to match a target, using only shaped intermediate rewards and the task demonstrations as context.
+Converting the Abstraction and Reasoning Corpus (ARC) into a reinforcement learning domain is a significant design challenge. Unlike standard benchmarks where an agent masters a single environment, ARC is a massive collection of independent puzzles. Each task requires ``learning to learn'': the agent must use a few demonstrations to infer a rule, then apply that rule to a new grid through sequential edits. This process demands expressive action spaces and suffers from sparse rewards.
 
-Mapping this task structure to the statically shaped tensors required by JAX-native accelerator code is difficult. Grid geometries vary wildly across tasks, ranging from $1 \times 1$ to $30 \times 30$, and the number of support and query pairs differs from task to task. Moreover, a valid evaluation protocol depends on keeping the held-out targets available for scoring without ever exposing them to the policy. JaxARC resolves these constraints through a stateless, functional architecture that keeps both the environment logic and the policy executing entirely on the GPU.
+The primary hurdle for an accelerator-native version is JAX's requirement for statically shaped tensors. ARC grids vary from $1\times1$ to $30\times30$, and task complexity dictates an inconsistent number of support examples. We solve this by standardizing the memory layout, padding all grids to a $30\times30$ canvas and using boolean masks to track active regions. This keeps the environment ``JIT-friendly'' and remarkably fast, while functional wrappers manage the split between ``support'' episodes (where the target is visible for adaptation) and ``query'' episodes (where the target is hidden for scoring).
 
 \subsection{System Architecture}
 
 JaxARC enforces a functional separation between offline task preparation, compiled environment execution, and benchmark evaluation. As shown in Figure~\ref{fig:jaxarc_system_organization}, the architecture operates across three lanes. Appendix~\ref{app:system_components} gives the corresponding implementation-level component summary.
 
-On the host side, raw ARC JSON files from datasets ranging from MiniARC to ARC-AGI-2 are parsed, normalized, and packed into a fixed-shape task buffer. This buffer holds the padded grids, active area masks, and the true hidden query targets. This static buffer is built exactly once offline and transferred to the accelerator, where it is reused across all vectorized environments to eliminate host-device synchronization bottlenecks.
+\paragraph{Host-side preparation.} Raw ARC JSON data is parsed and packed into a static ``task buffer'' offline. This buffer holds the padded grids, area masks, and hidden targets as a single PyTree. This static buffer is built exactly once offline and transferred to the accelerator, where it is reused across all vectorized environments to eliminate host-device synchronization bottlenecks.
 
-The compiled JAX core contains the stateless \texttt{reset} and \texttt{step} logic. It exposes an agent-facing interface where lightweight action and observation wrappers translate discrete policy decisions into internal mask operations. Inside the core, execution branches into either a support mode, which exposes visible targets and shaped rewards, or a query mode, where the target is entirely hidden from the explicit environment state. 
+\paragraph{Compiled JAX core.} The transition logic is stateless and fully compiled. It exposes an agent-facing interface where lightweight wrappers translate policy outputs into internal mask operations. The core branches execution based on the episode mode, ensuring that held-out query targets never leak into the policy-visible state.
 
-Finally, the evaluator lane processes transition outputs to compute benchmark metrics safely. Support-side metrics are computed using the visible states, but hidden-query evaluation runs in an isolated path. The evaluator compares the submitted terminal grid directly against the true hidden targets retrieved straight from the task buffer. This guarantees the policy never receives the held-out answers through the observation or reward channels, while still computing exact benchmark metrics entirely on the accelerator.
+\paragraph{Benchmark evaluator.} Scoring is isolated from the agent's observation space. The evaluator compares the agent's final submission against the true targets cached in the device task buffer. This design allows for the instantaneous calculation of exact success rates and pixel-wise similarity metrics without leaving the GPU.
+
+This memory layout preserves ARC's canonical task organization. A single task state in JaxARC bundles the support (demonstration) pairs, query inputs, and ground-truth outputs. JaxARC supports configurable visibility: during support episodes, the agent may view the target grid to receive shaped reward feedback. In query episodes, the target grid is replaced with a background-colored placeholder, forcing the agent to infer and construct the answer. Figure~\ref{fig:jaxarc_task_view} illustrates this task structure on two ARC tasks. Support pairs are presented with both inputs and outputs visible, while the held-out query is presented with its output hidden.
 
 \begin{figure*}[t]
 \centering
@@ -21,13 +23,21 @@ Finally, the evaluator lane processes transition outputs to compute benchmark me
 \label{fig:jaxarc_system_organization}
 \end{figure*}
 
-\subsection{Static memory layout and task organization}
+\subsection{Functional Actions and Observations}
 
-To make ARC compatible with JAX's \texttt{jit} compilation, JaxARC completely standardizes the memory layout. We pad all grids to a maximum $30 \times 30$ canvas and use boolean masks to track the true active area of each grid. This preserves ARC's original variable-size geometry functionally while keeping the memory representation statically dense. By preloading these fixed-shape PyTree buffers directly onto the accelerator, we eliminate the synchronization bottleneck caused by loading new data from the host CPU every episode. 
+We intentionally diverged from ARCLE's stateful machinery, which tracks hidden selection modes, background pixels, and rotation parity. Instead, JaxARC uses a purely functional, mask-based action space. Every transition receives an operation ID and a binary mask. If an agent wants to rotate a shape, it provides the mask for that shape; the environment applies the edit directly. This makes the action semantics explicit and keeps the logic compatible with JAX's transformation rules.
 
-This memory layout preserves ARC's natural task organization. A single task state in JaxARC bundles the support (demonstration) pairs, the query inputs, and the true query outputs. ARC tasks canonically include both support pairs, where input-output examples illustrate the rule, and query pairs, where the agent must produce the output. JaxARC supports configurable visibility: during support episodes the agent can see the target grid and receive shaped reward feedback, while during query episodes the target grid can be replaced with a background-colored placeholder and the target mask zeroed out, forcing the agent to construct the answer without the target visible. Because the true query target (\texttt{true\_test\_output\_grids}) remains cached internally inside the environment's state, JaxARC scores the final submission instantly on the GPU.
+This design choice places JaxARC closer to simple, object-oriented editing tools such as BrainGridGame\footnote{\url{https://braingridgame.com/}} than to ARCLE's internal object-state machinery. Operations such as movement, rotation, and flipping act directly on the bounding box of the provided selection mask. This keeps the underlying math compatible with JAX transformations and makes the action space compatible with recorded human demonstration datasets available in ARC-Interactive-History-Dataset\footnote{\url{https://github.com/neoneye/ARC-Interactive-History-Dataset}}, supporting future imitation learning research.
 
-Figure~\ref{fig:jaxarc_task_view} illustrates this task structure on two ARC tasks. Support pairs are presented with both inputs and outputs visible, while the held-out query is presented with its output hidden.
+Our action system includes 35 operations, from basic color fills and movement to clipboard-based copy-paste and geometric flips (Appendix~\ref{app:action_config}). Because generating a full $30 \times 30$ binary mask is difficult for standard policy networks, we provide lightweight wrappers to simplify the agent-facing action space. A point-action wrapper reduces the output to a simple $(\text{row}, \text{col}, \text{operation})$ tuple, converting that selection into a mask under the hood. A bounding-box wrapper similarly lets the agent select rectangular regions. Appendix~\ref{app:action_config} lists the operation profiles used by the experiments.
+
+Observations follow a similar modular pattern. The base view is the working grid, but researchers can append ``channels'' for the original input, the clipboard, or even contextual support pairs (see Appendix~\ref{app:observation_wrappers}). This allows for controlled experiments on how much task-level context a policy actually needs to succeed.
+
+\subsection{Evaluation and Reward Shaping}
+
+The true objective in ARC is sparse and submit-based: the agent only succeeds if its final submitted grid is a perfect, pixel-for-pixel match with the target. While JaxARC implements this directly, we also provide configurable reward shaping (like pixel-match similarity, step penalties, or penalties for invalid submissions) to help agents find a learning signal in the sparse reward landscape. When running in query mode with hidden targets, reward shaping can be disabled to prevent the agent from extracting the answer via reward gradients.
+
+Beyond scalar returns, JaxARC tracks detailed episode diagnostics: whether the agent submitted an answer, whether the episode truncated due to time limits, the best similarity achieved, and the exact similarity score of the final grid. This granularity is essential for debugging: it allows us to distinguish between agents that can't learn the rule and those that simply fail the submission protocol.
 
 \begin{figure}[htbp]
 \centering
@@ -46,30 +56,7 @@ Figure~\ref{fig:jaxarc_task_view} illustrates this task structure on two ARC tas
 \caption{Task-level views for two ARC-AGI-1 tasks in JaxARC. In each task, support pairs provide input-output demonstrations, while the held-out query is shown without its target output. The policy interacts only with the visible grids; the true query target remains internal for exact scoring.}
 \label{fig:jaxarc_task_view}
 \end{figure}
-\FloatBarrier
-
-\subsection{Functional Action and Observation Spaces}
-
-While ARCLE models a mutable state machine with hidden selection modes (tracking selected pixels, background pixels, and rotation parity across steps), JaxARC relies on a purely functional, mask-based action space. The base environment accepts an operation identifier alongside a binary mask that specifies exactly where to apply the edit. By keeping the core transition logic mask-based, the semantics of each action remain explicit in the state transition. The environment does not rely on hidden mode switches to interpret subsequent actions.
-
-This design choice places JaxARC closer to simple, object-oriented editing tools such as BrainGridGame\footnote{\url{https://braingridgame.com/}} than to ARCLE's internal object-state machinery. Operations such as movement, rotation, and flipping act directly on the bounding box of the provided selection mask. This keeps the underlying math compatible with JAX transformations and makes the action space compatible with recorded human demonstration datasets available in ARC-Interactive-History-Dataset\footnote{\url{https://github.com/neoneye/ARC-Interactive-History-Dataset}}, supporting future imitation learning research.
-
-The action system implements 35 discrete operations organized into six categories: fill operations (0--9) that set selected cells to specific colors; flood fill operations (10--19) that fill contiguous regions starting from a selected cell; movement operations (20--23) that shift selected regions up, down, left, or right; transformation operations (24--27) that rotate or flip regions; editing operations (28--30) such as copy, paste, and cut using a clipboard channel; and special operations (31--34) for clearing cells, resetting to the input grid, cropping to a bounding box, and submitting the final answer.
-
-Because generating a full $30 \times 30$ binary mask is difficult for standard policy networks, we provide lightweight wrappers to simplify the agent-facing action space. A point-action wrapper reduces the output to a simple $(\text{row}, \text{col}, \text{operation})$ tuple, converting that selection into a mask under the hood. A bounding-box wrapper similarly lets the agent select rectangular regions. Appendix~\ref{app:action_config} lists the operation profiles used by the experiments.
-
-The observation side mirrors this configurability. The base observation is just the current working grid. Optional wrappers allow researchers to append the original input grid, the clipboard state, the visible target grid, or contextual support pairs from the same task. This separation lets researchers vary the perceptual interface available to the agent without changing the task semantics or evaluation logic underneath.
-
-\subsection{Reward Shaping}
-
-The true objective in ARC is sparse and submit-based: the agent only succeeds if its final submitted grid is a perfect, pixel-for-pixel match with the target. JaxARC explicitly implements this exact-match objective, awarding a success bonus only when the agent formally submits and the similarity reaches 1.0. 
-
-Because pure sparse rewards are nearly impossible to learn from scratch, the environment exposes configurable shaping. Researchers can toggle dense rewards based on intersection-over-union (IoU) similarity, step penalties, or penalties for invalid submissions; the exact profiles used here are listed in Appendix~\ref{app:reward_config}. When running in query mode with hidden targets, reward shaping can be disabled to prevent the agent from extracting the answer via reward gradients.
-
-Beyond scalar returns, JaxARC tracks detailed episode diagnostics: whether the agent submitted an answer, whether the episode truncated due to time limits, the best similarity achieved, and the exact similarity score of the final grid. ARC failure is not one-dimensional. An agent might perfectly replicate the support grid but fail to submit, or it might submit frequently on hidden queries without ever being correct. JaxARC logs these distinctions explicitly so researchers can pinpoint where and how their agents fail.
 
 \subsection{Unified Dataset API}
 
 JaxARC standardizes the environment surface across MiniARC \citep{kimPlaygroundsAbstractionReasoning2022}, ConceptARC \citep{moskvichevConceptARCBenchmarkEvaluating2023}, and the canonical ARC-AGI-1 \citep{cholletMeasureIntelligence2019} and ARC-AGI-2 \cite{cholletARCAGI2NewChallenge2025} under a single API. Appendix~\ref{app:datasets} describes the task subsets used in the experiments. Teams can prototype architectures on fast, simplified MiniARC tasks, diagnose specific algorithmic failures on ConceptARC's isolated cognitive skills, or run final evaluations on canonical ARC tasks by changing the dataset configuration.
-
-By formalizing ARC's highly variable task structure, providing configurable evaluation modes, and offering flexible agent interfaces, JaxARC creates an accelerator-native foundation for large-scale RL experimentation on ARC.
