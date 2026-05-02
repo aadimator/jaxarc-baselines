@@ -95,7 +95,7 @@ num_envs = 1024
 keys = jax.random.split(jax.random.PRNGKey(0), num_envs)
 
 # Batch the reset logic
-reset_one = lambda k: env.reset(key, env_params=env_params)
+reset_one = lambda k: env.reset(k, env_params=env_params)
 states, timesteps = jax.jit(jax.vmap(reset_one))(keys)
 
 # Batch the step logic
@@ -333,7 +333,7 @@ The throughput benchmark uses MiniARC task \texttt{Most\_Common\_color\_l6ab0lf3
 \label{fig:throughput_log_appendix}
 \end{figure}
 
-Detailed speedup comparisons for each hardware tier are provided in Tables~\ref{tab:speedup_cpu_m2_pro}, \ref{tab:speedup_rtx_3090}, and \ref{tab:speedup_h100_gpu}.
+Detailed speedup comparisons for each hardware tier are provided in Tables~\ref{tab:speedup_cpu_m2_pro}, \ref{tab:speedup_rtx_3090}, and \ref{tab:speedup_h100_gpu}. The H100 JIT run continues beyond the largest matched ARCLE batch and peaks at 101.3M SPS at batch size 262\,144. A separate multi-device \texttt{pmap} benchmark reaches 790.4M SPS at batch size 2\,097\,152 and gives a 5\,438.8$\times$ speedup at the largest ARCLE-matched batch.
 
 \begin{table}[htbp]
 \centering

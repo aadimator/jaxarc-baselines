@@ -1,8 +1,8 @@
 \section{JaxARC as an RL Environment}\label{sec:jaxarc_environment}
 
-Converting the Abstraction and Reasoning Corpus (ARC) into a reinforcement learning domain is a significant design challenge. Unlike standard benchmarks where an agent masters a single environment, ARC is a massive collection of independent puzzles. Each task requires ``learning to learn'': the agent must use a few demonstrations to infer a rule, then apply that rule to a new grid through sequential edits. This process demands expressive action spaces and suffers from sparse rewards.
+Converting the Abstraction and Reasoning Corpus (ARC) into a reinforcement learning domain creates several design constraints. Unlike benchmarks where an agent repeatedly trains on one environment, ARC contains many independent grid-transformation tasks. Each task provides a few demonstrations, then asks the agent to construct an output for a new grid through sequential edits. This process needs expressive action spaces and has sparse submit-based rewards.
 
-The primary hurdle for an accelerator-native version is JAX's requirement for statically shaped tensors. ARC grids vary from $1\times1$ to $30\times30$, and task complexity dictates an inconsistent number of support examples. We solve this by standardizing the memory layout, padding all grids to a $30\times30$ canvas and using boolean masks to track active regions. This keeps the environment ``JIT-friendly'' and remarkably fast, while functional wrappers manage the split between ``support'' episodes (where the target is visible for adaptation) and ``query'' episodes (where the target is hidden for scoring).
+The primary hurdle for an accelerator-native version is JAX's requirement for statically shaped tensors. ARC grids vary from $1\times1$ to $30\times30$, and task complexity dictates an inconsistent number of support examples. We solve this by standardizing the memory layout, padding all grids to a $30\times30$ canvas and using boolean masks to track active regions. This keeps the environment JIT-compatible, while functional wrappers manage the split between target-visible support episodes and target-hidden query episodes.
 
 \subsection{System Architecture}
 
@@ -37,7 +37,7 @@ Observations follow a similar modular pattern. The base view is the working grid
 
 The true objective in ARC is sparse and submit-based: the agent only succeeds if its final submitted grid is a perfect, pixel-for-pixel match with the target. While JaxARC implements this directly, we also provide configurable reward shaping (like pixel-match similarity, step penalties, or penalties for invalid submissions) to help agents find a learning signal in the sparse reward landscape. When running in query mode with hidden targets, reward shaping can be disabled to prevent the agent from extracting the answer via reward gradients.
 
-Beyond scalar returns, JaxARC tracks detailed episode diagnostics: whether the agent submitted an answer, whether the episode truncated due to time limits, the best similarity achieved, and the exact similarity score of the final grid. This granularity is essential for debugging: it allows us to distinguish between agents that can't learn the rule and those that simply fail the submission protocol.
+Beyond scalar returns, JaxARC tracks detailed episode diagnostics: whether the agent submitted an answer, whether the episode truncated due to time limits, the best similarity achieved, and the exact similarity score of the final grid. These diagnostics distinguish between agents that make partial grid edits but fail to submit and agents that submit incorrect final grids.
 
 \begin{figure}[htbp]
 \centering
