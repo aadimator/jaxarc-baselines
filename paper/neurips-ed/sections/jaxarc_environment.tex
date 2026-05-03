@@ -2,17 +2,39 @@
 
 Converting the Abstraction and Reasoning Corpus (ARC) into a reinforcement learning domain creates several design constraints. Unlike benchmarks where an agent repeatedly trains on one environment, ARC contains many independent grid-transformation tasks. Each task provides a few demonstrations, then asks the agent to construct an output for a new grid through sequential edits. This process needs expressive action spaces and has sparse submit-based rewards.
 
-The primary hurdle for an accelerator-native version is JAX's requirement for statically shaped tensors. ARC grids vary from $1\times1$ to $30\times30$, and task complexity dictates an inconsistent number of support examples. We solve this by standardizing the memory layout, padding all grids to a $30\times30$ canvas and using boolean masks to track active regions. This keeps the environment JIT-compatible, while functional wrappers manage the split between target-visible support episodes and target-hidden query episodes.
+The primary hurdle for an accelerator-native version is JAX's requirement for statically shaped tensors. ARC grids vary from $1\times1$ to $30\times30$, and task complexity dictates an inconsistent number of support examples. We solve this by standardizing the memory layout, padding all grids to a $30\times30$ canvas and using boolean masks to track active regions. This keeps the environment JIT-compatible, while functional wrappers manage the split between target-visible support episodes and target-hidden query episodes. By separating environment logic (the \texttt{step} function) from immutable task data (the task buffer) and transient episode state (the \texttt{State} object), we ensure that the simulator logic remains JIT-compiled on the GPU while task-specific metadata can be swapped or updated without re-compilation.
 
 \subsection{System Architecture}
 
-JaxARC enforces a functional separation between offline task preparation, compiled environment execution, and benchmark evaluation. As shown in Figure~\ref{fig:jaxarc_system_organization}, the architecture operates across three lanes. Appendix~\ref{app:system_components} gives the corresponding implementation-level component summary.
+JaxARC enforces a functional separation between offline task preparation, compiled environment execution, and benchmark evaluation (Figure~\ref{fig:jaxarc_system_organization}). Table~\ref{tab:system_components} summarizes the concrete components behind this split and where each one runs. This partitioning ensures that held-out query targets remain isolated from the agent's observation space while remaining accessible to the evaluator for exact-match scoring.
 
-\paragraph{Host-side preparation.} Raw ARC JSON data is parsed and packed into a static ``task buffer'' offline. This buffer holds the padded grids, area masks, and hidden targets as a single PyTree. This static buffer is built exactly once offline and transferred to the accelerator, where it is reused across all vectorized environments to eliminate host-device synchronization bottlenecks.
+\paragraph{Host-side preparation.} Raw ARC JSON files are parsed and normalized on the CPU before training begins. These tasks are then packed into a static ``task buffer'', which holds the padded grids, area masks, and hidden targets as a single PyTree. This static buffer is built exactly once offline and transferred to the accelerator, where it is reused across all vectorized environments to eliminate host-device synchronization bottlenecks.
 
 \paragraph{Compiled JAX core.} The transition logic is stateless and fully compiled. It exposes an agent-facing interface where lightweight wrappers translate policy outputs into internal mask operations. The core branches execution based on the episode mode, ensuring that held-out query targets never leak into the policy-visible state.
 
 \paragraph{Benchmark evaluator.} Scoring is isolated from the agent's observation space. The evaluator compares the agent's final submission against the true targets cached in the device task buffer. This design allows for the instantaneous calculation of exact success rates and pixel-wise similarity metrics without leaving the GPU.
+
+\begin{table}[t]
+\centering
+\caption{System components in JaxARC. All performance-critical logic, including transitions and scoring, resides on the accelerator.}
+\label{tab:system_components}
+\scriptsize
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Component} & \textbf{Role} & \textbf{Execution boundary} \\
+\midrule
+Dataset parsers & Parse ARC-style JSON and normalize grid geometries & Host (pre-training) \\
+Task registry & Resolve dataset and subset aliases to task identifiers & Host (pre-training) \\
+Task buffer & Immutable storage for grids, masks, and hidden targets & Built on host, reused on device \\
+Compiled core & Stateless \texttt{reset} and \texttt{step} transition logic & JIT-compiled device (GPU) \\
+Action wrappers & Map policy outputs to internal mask operations & Device (JAX transforms) \\
+Observation wrappers & Augment grids with input, answer, or context channels & Device (JAX transforms) \\
+Evaluator & Compute success, similarity, and submission metrics & Device (GPU) \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
 
 This memory layout preserves ARC's canonical task organization. A single task state in JaxARC bundles the support (demonstration) pairs, query inputs, and ground-truth outputs. JaxARC supports configurable visibility: during support episodes, the agent may view the target grid to receive shaped reward feedback. In query episodes, the target grid is replaced with a background-colored placeholder, forcing the agent to infer and construct the answer. Figure~\ref{fig:jaxarc_task_view} illustrates this task structure on two ARC tasks. Support pairs are presented with both inputs and outputs visible, while the held-out query is presented with its output hidden.
 

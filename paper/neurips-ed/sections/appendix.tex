@@ -3,33 +3,6 @@
 
 This appendix provides a comprehensive reference for the implementation, experimental settings, and measurement protocols reported in the main text.
 
-\subsection{System components}
-\label{app:system_components}
-
-JaxARC is designed around a functional separation of concerns: data ingestion, environment logic, and benchmark-safe evaluation. This partitioning ensures that held-out query targets remain isolated from the agent's observation and reward channels while remaining accessible to the evaluator for exact-match scoring. Table~\ref{tab:system_components} details these components and their execution boundaries.
-
-\begin{table}[htbp]
-\centering
-\caption{System components in JaxARC. All performance-critical logic, including transitions and scoring, resides on the accelerator.}
-\label{tab:system_components}
-\scriptsize
-\resizebox{\linewidth}{!}{%
-\begin{tabular}{@{}lll@{}}
-\toprule
-\textbf{Component} & \textbf{Role} & \textbf{Execution boundary} \\
-\midrule
-Dataset parsers & Parse ARC-style JSON and normalize grid geometries & Host (pre-training) \\
-Task registry & Resolve dataset and subset aliases to task identifiers & Host (pre-training) \\
-Task buffer & Immutable storage for grids, masks, and hidden targets & Built on host, reused on device \\
-Compiled core & Stateless \texttt{reset} and \texttt{step} transition logic & JIT-compiled Device (GPU) \\
-Action wrappers & Map policy outputs to internal mask operations & Device (JAX transforms) \\
-Observation wrappers & Augment grids with input, answer, or context channels & Device (JAX transforms) \\
-Evaluator & Compute success, similarity, and submission metrics & Device (GPU) \\
-\bottomrule
-\end{tabular}
-}
-\end{table}
-
 \subsection{Task and transition visualization}
 \label{app:visualization}
 

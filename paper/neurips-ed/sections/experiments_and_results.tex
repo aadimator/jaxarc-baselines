@@ -5,7 +5,7 @@ We validate JaxARC through three experiments: a raw throughput comparison agains
 
 \subsection{Throughput Scaling}
 
-To quantify the speed advantage of accelerator-native simulation, we benchmark JaxARC against ARCLE \citep{leeARCLEAbstractionReasonin2024} on a fixed ARC task. Our protocol measures steady-state environment steps per second (SPS) over batch sizes ranging from $2^0$ (1) to $2^{20}$ (1\,048\,576 parallel environments) for the matched single-device sweep, with an extended multi-device \texttt{pmap} sweep on the H100. Each configuration runs 100 steps per environment, is repeated 10 times, and is reported as mean environment steps per second. We tested three platforms: an Apple M2 Pro CPU, an NVIDIA RTX 3090, and an NVIDIA H100 GPU. 
+To quantify the speed advantage of accelerator-native simulation, we benchmark JaxARC against ARCLE \citep{leeARCLEAbstractionReasonin2024} on a fixed ARC task. Our protocol measures steady-state environment steps per second (SPS) over batch sizes ranging from $2^0$ (1) to $2^{20}$ (1\,048\,576 parallel environments) for the matched single-device sweep, with an extended multi-device \texttt{pmap} sweep on the H100. Each configuration runs 100 steps per environment, is repeated 10 times, and is reported as mean environment steps per second. We tested three hardware platforms: an Apple M2 Pro CPU, an NVIDIA RTX 3090 (24GB), and an NVIDIA H100 (80GB).
 
 JaxARC throughput is recorded after JIT compilation to isolate steady-state performance. ARCLE operates without a compilation phase and is evaluated in both synchronous and asynchronous modes. The metric captures simulator step cost only and excludes policy-update overhead.
 
@@ -16,7 +16,7 @@ This throughput makes it feasible to train and evaluate RL agents across hundred
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.86\linewidth]{Figures/throughput_combined_linear.pdf}
-\caption{Throughput (steps/second) vs.\ number of parallel environments on CPU (left), RTX 3090 (center), and H100 (right). JaxARC scales near-linearly with batch size, while ARCLE saturates due to Python-level and multiprocessing overhead.}
+\caption{Throughput scaling (Steps Per Second) vs. number of parallel environments on CPU (left), RTX 3090 (center), and H100 (right). JaxARC scales near-linearly, while ARCLE saturates due to multiprocessing overhead.}
 \label{fig:throughput_combined_linear}
 \end{figure}
 
@@ -30,8 +30,8 @@ This throughput makes it feasible to train and evaluate RL agents across hundred
 \midrule
 CPU (M2 Pro) & 65\,536 & 789K & 21K & 38$\times$ \\
 RTX 3090 & 131\,072 & 32.6M & 36K & 903$\times$ \\
-H100 GPU & 131\,072 & 86.7M & 26K & 3\,323$\times$ \\
-8x H100 GPUs & 131\,072 & 141.9M & 26K & 5\,439$\times$ \\
+H100 GPU & 131\,072 & 86.7M & 26K & 3,323$\times$ \\
+8x H100 GPUs & 131\,072 & 141.9M & 26K & 5,439$\times$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -48,7 +48,7 @@ Extended results for all 16 ConceptARC concept groups and all ARC-AGI subsets, i
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.88\linewidth]{Figures/combined_episode_return.pdf}
-\caption{Episodic return across ARC-AGI groupings and ConceptARC concept groups for four RL algorithms scheduled for 10M steps and 5 seeds per condition. Shaded regions show $\pm1$ standard deviation across completed seeds. The matching success-rate panel is in Appendix~\ref{app:extended_baselines}.}
+\caption{Episodic return across ARC-AGI and ConceptARC groupings for four RL algorithms. Shaded regions show $\pm1$ standard deviation across 5 seeds. The matching success-rate panel is in Appendix~\ref{app:extended_baselines}.}
 \label{fig:baseline_episode_return}
 \end{figure}
 
