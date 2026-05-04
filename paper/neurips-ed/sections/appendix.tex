@@ -264,7 +264,7 @@ Evaluation & 20 evaluations, 32 episodes per evaluation \\
 \subsection{Algorithm hyperparameters}
 \label{app:baseline_hyperparameters}
 
-Hyperparameters for the baseline multi-algorithm sweep are detailed in Table~\ref{tab:algorithm_hyperparams}. They were selected for stable execution across many task families rather than tuned as per-task upper bounds.
+Hyperparameters for the baseline multi-algorithm sweep are detailed in Table~\ref{tab:algorithm_hyperparams}. They were selected for stable execution across many task families rather than tuned as per-task upper bounds. DDQN uses the online network for action selection and the target network for value evaluation in the Q-learning target.
 
 \begin{table}[htbp]
 \centering
@@ -273,7 +273,7 @@ Hyperparameters for the baseline multi-algorithm sweep are detailed in Table~\re
 \scriptsize
 \begin{tabular}{@{}lllll@{}}
 \toprule
-\textbf{Hyperparameter} & \textbf{PPO} & \textbf{DQN} & \textbf{PQN} & \textbf{REINFORCE} \\
+\textbf{Hyperparameter} & \textbf{PPO} & \textbf{DDQN} & \textbf{PQN} & \textbf{REINFORCE} \\
 \midrule
 Learning rate & $3\cdot10^{-4}$ & $5\cdot10^{-4}$ & $5\cdot10^{-4}$ & $3\cdot10^{-4}$ \\
 Rollout length & 25 & 2 & 8 & 32 \\
@@ -405,7 +405,7 @@ Batch Size & JaxARC SPS & Mode & ARCLE SPS & Mode & Speedup \\
 
 The extended baseline figures separate shaped editing progress from exact task solving. Episodic return increases on several ARC-AGI and ConceptARC subsets, especially for PPO, but exact success remains substantially lower. This gap indicates that the agents often learn partial edits, reward-shaping behavior, or frequent submissions without reliably producing the full target grid.
 
-Across ARC-AGI groupings, PPO is strongest, REINFORCE is usually the closest competitor, and the value-based methods remain lower across most panels. ConceptARC shows larger variation across concept groups. Count is the clearest positive case for the shallow CNN policy-gradient agents, whereas several other groups show moderate shaped return with much weaker exact success. These per-family curves are therefore more informative than a single aggregate score, which would mix qualitatively different learning regimes.
+Across ARC-AGI groupings, PPO is strongest, REINFORCE is usually the closest competitor, and the value-based methods remain lower or less stable across most panels. ConceptARC shows larger variation across concept groups. Count is the clearest positive case for the shallow CNN policy-gradient agents, while DDQN shows an early shaped-return gain on Count that does not persist through the full run. Several other groups show moderate shaped return with much weaker exact success. These per-family curves are therefore more informative than a single aggregate score, which would mix qualitatively different learning regimes.
 
 \begin{figure}[htbp]
 \centering
