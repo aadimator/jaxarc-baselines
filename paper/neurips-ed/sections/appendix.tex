@@ -1,7 +1,5 @@
-\section{Environment implementation}
-\label{app:environment_details}
-
-This appendix provides a comprehensive reference for the implementation, experimental settings, and measurement protocols reported in the main text.
+\section{Environment interface and implementation}
+\label{app:environment_interface}
 
 \subsection{Task and transition visualization}
 \label{app:visualization}
@@ -45,7 +43,7 @@ To support qualitative analysis and debugging, JaxARC includes four primary visu
 \subsection{API usage examples}
 \label{app:usage}
 
-JaxARC adheres to the stateless, functional API common to JAX environments: random state is managed through explicit PRNG keys, and environment state is passed as a PyTree. Listing~\ref{lst:minimal_api} demonstrates a minimal transition loop, while Listing~\ref{lst:batched_api} shows how the functional core is scaled using JAX's vectorization primitives.
+JaxARC follows the stateless API used by JAX environment libraries: random state is carried through explicit PRNG keys, and the environment state is a PyTree passed into and returned from each transition. Listing~\ref{lst:minimal_api} shows a single-task loop. Listing~\ref{lst:batched_api} shows the same reset and step functions under \texttt{vmap}.
 
 \begin{lstlisting}[style=jaxarcpython, caption={Minimal transition loop for a single task.}, label={lst:minimal_api}]
 import jax
@@ -58,7 +56,6 @@ env, env_params = make("Mini-Most_Common_color_l6ab0lf3xztbyxsu3p")
 key = jax.random.PRNGKey(0)
 state, timestep = env.reset(key, env_params=env_params)
 
-# Stateless step
 action = env.action_space(env_params).sample(key)
 state, timestep = env.step(state, action, env_params=env_params)
 \end{lstlisting}
@@ -80,7 +77,7 @@ states, timesteps = jax.jit(jax.vmap(step_one))(states, actions)
 \section{Datasets and task subsets}
 \label{app:datasets}
 
-JaxARC partitions the ARC problem space into discrete datasets, each managed by a dedicated parser and registry. These parsers handle the variability of ARC's native grid sizes ($1 \times 1$ to $30 \times 30$) by padding tasks into fixed-shape GPU-resident buffers. We use ``scenarios'' to select specific task subsets (e.g., \texttt{AGI1-entry}, \texttt{Concept-Count}) before training begins.
+JaxARC partitions the ARC problem space into datasets, each managed by a parser and registry entry. The parsers preserve ARC's native grid-size range ($1 \times 1$ to $30 \times 30$) while padding task tensors into fixed-shape accelerator buffers. A scenario selects the active task subset before compilation, for example \texttt{AGI1-entry} or \texttt{Concept-Count}. This keeps the compiled transition shape static while allowing the benchmark to report by task family.
 
 \subsection{ARC-AGI-1 groups}
 \label{app:arcagi_subsets}
@@ -109,7 +106,7 @@ For the ARC-AGI-1 sweep, we adopted the task tiers defined by the ARC-Game proje
 \subsection{ConceptARC concept groups}
 \label{app:concept_mini}
 
-The ConceptARC benchmark is organized into concept groups that isolate specific spatial or logical rules. Our baseline figure focuses on six representative groups: AboveBelow, Center, CleanUp, CompleteShape, Copy, and Count. The full 16-group breakdown is available in Appendix~\ref{app:extended_baselines}.
+The ConceptARC benchmark is organized into concept groups that isolate specific spatial or logical rules. Our main baseline figure focuses on six representative groups: AboveBelow, Center, CleanUp, CompleteShape, Copy, and Count. The full 16-group breakdown is available in Appendix~\ref{app:extended_baselines}.
 
 \section{Configuration surface}
 \label{app:configuration_surface}
@@ -132,6 +129,7 @@ Action mode & \texttt{point} & Parameterization of the selection mask \\
 Operation profile & \texttt{raw} (unless specified otherwise) & Allowed set of editing operations \\
 Observation stack & answer, input, contextual & Configured grid channels for the policy \\
 Reward profile & balanced & Shaping and submission rewards \\
+Episode limit & 100 steps & Maximum edits before truncation \\
 Evaluation schedule & 20 intervals, 32 episodes each & Periodic monitoring during training \\
 \bottomrule
 \end{tabular}
@@ -190,7 +188,7 @@ The environment core receives an operation ID and a selection mask. To keep the 
 \subsection{Observation channels}
 \label{app:observation_wrappers}
 
-The agent's observation is composed of multiple grid channels. We use wrappers to concatenate task context onto the current working grid. Table~\ref{tab:observation_wrappers} lists the wrappers used to build the observation stack.
+The base observation is the current working grid. Observation wrappers concatenate additional grid channels for task context. This design lets the same environment expose diagnostic interfaces, such as answer-visible positive controls, without changing the transition function. Table~\ref{tab:observation_wrappers} lists the wrappers used to build the observation stack.
 
 \begin{table}[htbp]
 \centering
@@ -214,7 +212,7 @@ The agent's observation is composed of multiple grid channels. We use wrappers t
 \subsection{Reward profiles}
 \label{app:reward_config}
 
-Rewards are calculated by aggregating scalar penalties and bonuses. Our \texttt{balanced} profile used for baselines includes a dense similarity term to help find a learning signal. For final benchmark evaluation on hidden targets, this similarity term is disabled to prevent information leakage.
+Rewards are the sum of scalar penalties and bonuses. The \texttt{balanced} profile used for the reported baselines includes a dense similarity term, which gives shallow model-free agents a learning signal while they explore the editing interface. When evaluating hidden-target submissions, the evaluator can disable this similarity term so that reward does not reveal target-grid information.
 
 \begin{table}[htbp]
 \centering
@@ -237,9 +235,9 @@ Evaluation & -0.02 & 10.0 & -1.0 & 0.0 & Hidden-target evaluation \\
 \section{Baseline experimental protocol}
 \label{app:stoix}
 
-JaxARC implements the standard Stoix environment interface. Our baseline sweep utilized a Stoix environment factory to manage action flattening and observation channel concatenation. Training metrics include success rate (exact match only), solve time, truncation rate, and return distribution.
+JaxARC implements the Stoix environment interface \citep{toledoStoixDistributedSingleagent2024}. The baseline sweep uses a Stoix environment factory for action flattening, observation channel concatenation, vectorized reset/step calls, and metric logging. The logged metrics include episodic return, exact-match success rate, truncation rate, solve time, and episode length.
 
-The sweep consists of 700 scheduled runs (4 algorithms $\times$ 35 subsets $\times$ 5 seeds). We report the learning curves for all successfully completed runs. Table~\ref{tab:baseline_common_settings} summarizes the common settings across these runs.
+The sweep consists of 4 algorithms $\times$ 35 subsets $\times$ 5 seeds). It covers 16 ConceptARC concept groups and 19 ARC-AGI-1 train/eval or label-based subsets. We report learning curves for the full set of runs in the appendix section \ref{app:extended_baselines} below. Table~\ref{tab:baseline_common_settings} summarizes the common settings across these runs.
 
 \begin{table}[htbp]
 \centering
@@ -250,13 +248,15 @@ The sweep consists of 700 scheduled runs (4 algorithms $\times$ 35 subsets $\tim
 \toprule
 \textbf{Parameter} & \textbf{Value} \\
 \midrule
-Training budget & 10 million environment steps \\
+Training budget & 10 million environment steps per run \\
 Runs per condition & 5 random seeds \\
 Parallelization & 512 environments \\
+Episode limit & 100 steps \\
 Network architecture & Shallow CNN (2-layer torso) \\
 Action interface & \texttt{point} actions (\texttt{raw} profile) \\
 Observation interface & Working grid + input + context + visible answer \\
 Reward profile & balanced \\
+Evaluation & 20 evaluations, 32 episodes per evaluation \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -264,7 +264,7 @@ Reward profile & balanced \\
 \subsection{Algorithm hyperparameters}
 \label{app:baseline_hyperparameters}
 
-Hyperparameters for the baseline multi-algorithm sweep are detailed in Table~\ref{tab:algorithm_hyperparams}. These values were selected to ensure stability across diverse ARC tasks rather than an aggressively tuned upper bound.
+Hyperparameters for the baseline multi-algorithm sweep are detailed in Table~\ref{tab:algorithm_hyperparams}. They were selected for stable execution across many task families rather than tuned as per-task upper bounds.
 
 \begin{table}[htbp]
 \centering
@@ -276,15 +276,15 @@ Hyperparameters for the baseline multi-algorithm sweep are detailed in Table~\re
 \textbf{Hyperparameter} & \textbf{PPO} & \textbf{DQN} & \textbf{PQN} & \textbf{REINFORCE} \\
 \midrule
 Learning rate & $3\cdot10^{-4}$ & $5\cdot10^{-4}$ & $5\cdot10^{-4}$ & $3\cdot10^{-4}$ \\
-Rollout length & 128 & 2 & 8 & 32 \\
+Rollout length & 25 & 2 & 8 & 32 \\
 Epochs per update & 4 & 16 & 4 & n/a \\
-Minibatches & 16 & n/a & 16 & n/a \\
+Minibatches & 8 & n/a & 16 & n/a \\
 Discount ($\gamma$) & 0.99 & 0.99 & 0.99 & 0.99 \\
 Advantage estimation & $\lambda=0.95$ & n/a & $q\_\lambda=0.95$ & n/a \\
 Entropy reg. & 0.01 & n/a & n/a & 0.001 \\
 Value weight & 0.5 & n/a & n/a & 1.0 \\
 Exploration & Policy entropy & $\epsilon=0.1$ & $\epsilon$-decay & Policy entropy \\
-Replay size & n/a & 1,000,000 & n/a & n/a \\
+Gradient clip & 0.5 & 0.5 & 0.5 & 0.5 \\
 \bottomrule
 \end{tabular}
 \end{table}
