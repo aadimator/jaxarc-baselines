@@ -146,7 +146,7 @@ TASK_LABELS: dict[str, str] = {
 # ── algorithm config ──────────────────────────────────────────────────────────
 ALGO_CONFIGS: dict[str, dict] = {
     "ff_ppo": {"label": "PPO", "color": "#3A85C8", "marker": "o", "zorder": 4},
-    "ff_dqn": {"label": "DQN", "color": "#D4A847", "marker": "s", "zorder": 3},
+    "ff_ddqn": {"label": "DDQN", "color": "#D4A847", "marker": "s", "zorder": 3},
     "ff_pqn": {"label": "PQN", "color": "#E07040", "marker": "^", "zorder": 2},
     "ff_reinforce": {
         "label": "REINFORCE",
