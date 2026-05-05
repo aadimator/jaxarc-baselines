@@ -9,9 +9,6 @@ on JaxARC environments using the Stoix framework.
 
 from __future__ import annotations
 
-# Metrics
-from jaxarc_baselines.metrics import combined_custom_metrics
-
 __version__ = "0.1.0"
 
 __all__ = [
@@ -20,3 +17,12 @@ __all__ = [
     # Metrics
     "combined_custom_metrics",
 ]
+
+
+def __getattr__(name: str):
+    if name == "combined_custom_metrics":
+        from jaxarc_baselines.metrics import combined_custom_metrics
+
+        return combined_custom_metrics
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

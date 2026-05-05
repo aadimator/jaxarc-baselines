@@ -1,76 +1,164 @@
-# JaxARC-Baselines
+# JaxARC Baselines
 
-[![Actions Status][actions-badge]][actions-link]
-[![Documentation Status][rtd-badge]][rtd-link]
+This repository contains baseline reinforcement-learning experiments for
+JaxARC environments. It provides experiment configs, ARC-specific network
+configs, launcher scripts, and plotting utilities for running common Stoix
+baselines on MiniARC, ConceptARC, and ARC-AGI task subsets.
 
-[![PyPI version][pypi-version]][pypi-link]
-[![Conda-Forge][conda-badge]][conda-link]
-[![PyPI platforms][pypi-platforms]][pypi-link]
+The current benchmark scripts cover:
 
-[![GitHub Discussion][github-discussions-badge]][github-discussions-link]
+- PPO
+- DDQN
+- PQN
+- REINFORCE
 
-<!-- SPHINX-START -->
+## Repository Layout
 
-<!-- prettier-ignore-start -->
-[actions-badge]:            https://github.com/aadimator/JaxARC-Baselines/workflows/CI/badge.svg
-[actions-link]:             https://github.com/aadimator/JaxARC-Baselines/actions
-[conda-badge]:              https://img.shields.io/conda/vn/conda-forge/JaxARC-Baselines
-[conda-link]:               https://github.com/conda-forge/JaxARC-Baselines-feedstock
-[github-discussions-badge]: https://img.shields.io/static/v1?label=Discussions&message=Ask&color=blue&logo=github
-[github-discussions-link]:  https://github.com/aadimator/JaxARC-Baselines/discussions
-[pypi-link]:                https://pypi.org/project/JaxARC-Baselines/
-[pypi-platforms]:           https://img.shields.io/pypi/pyversions/JaxARC-Baselines
-[pypi-version]:             https://img.shields.io/pypi/v/JaxARC-Baselines
-[rtd-badge]:                https://readthedocs.org/projects/JaxARC-Baselines/badge/?version=latest
-[rtd-link]:                 https://JaxARC-Baselines.readthedocs.io/en/latest/?badge=latest
-
-<!-- prettier-ignore-end -->
-
-A collection of baseline implementations and utilities for training RL agents on JaxARC environments using the [Stoix](https://github.com/EdanToledo/Stoix) framework.
-
-This repository acts as a thin orchestration layer, leveraging the official JaxARC integration available upstream in Stoix, along with custom experiment configurations, network architectures, and a SLURM launcher.
-
-## Getting Started
-
-Follow these steps to reproduce the baseline setup locally.
-
-### 1. Clone the repository (with submodules)
-
-```bash
-git clone --recurse-submodules https://github.com/aadimator/JaxARC-Baselines.git
-cd JaxARC-Baselines
+```text
+run_experiment.py                         # single-run Hydra entry point
+experiments/configs/                      # baseline experiment configs
+configs/network/                          # ARC observation network configs
+configs/env/jaxarc/subsets/AGI1/          # ARC-AGI-1 task subset configs
+scripts/launch_baseline_benchmarks.py     # multi-algorithm launcher
+scripts/baseline_scheduler.py             # shared scheduling helpers
+scripts/plot_baseline_benchmarks.py       # plotting script for benchmark runs
+src/jaxarc_baselines/benchmark_log_parser.py
+stoix/                                   # Stoix submodule used by the baselines
 ```
 
-If you already cloned the repo without the flag, pull in the `stoix` submodule manually:
+The main baseline configs are:
+
+```text
+experiments/configs/baseline_ff_ppo_mini_all_512k.yaml
+experiments/configs/baseline_ff_ddqn_mini_all_512k.yaml
+experiments/configs/baseline_ff_pqn_mini_all_512k.yaml
+experiments/configs/baseline_ff_reinforce_mini_all_524k.yaml
+```
+
+Policy-gradient baselines use `configs/network/arc_shallow_cnn_hwc.yaml`.
+Value-based baselines use
+`configs/network/arc_shallow_cnn_hwc_q_value.yaml`.
+
+## Setup
+
+Clone the repository with submodules:
+
+```bash
+git clone --recurse-submodules <repo-url> jaxarc-baselines
+cd jaxarc-baselines
+```
+
+If the repository was cloned without submodules, initialize them manually:
 
 ```bash
 git submodule update --init --recursive
 ```
 
-Ensure the upstream `JaxARC` repository is available alongside this project (e.g. `../JaxARC`).
-
-### 2. Install dependencies with pixi
+Install the environment with Pixi:
 
 ```bash
 pixi install
 ```
 
-Enter the managed environment whenever you work on the project:
+`pixi.toml` installs JaxARC from PyPI and installs this repository plus the
+`stoix` submodule as editable local packages.
 
-```bash
-pixi shell
+## Data
+
+JaxARC dataset configs expect data under this repository's `data/` directory:
+
+```text
+data/
+  ARC-AGI-1/
+  ConceptARC/
+  MiniARC/
 ```
 
-### 3. Run the default experiment
+The benchmark launcher uses ARC-AGI-1 subset configs from
+`configs/env/jaxarc/subsets/AGI1/` and ConceptARC groups discovered from
+`data/ConceptARC/corpus`.
 
-With the environment active, launch the default PPO baseline:
+## Quick Checks
 
-```bash
-python run_experiment.py
-```
-
-Override any Stoix or JaxARC configuration straight from the command line, for example:
+Check that Hydra can compose a baseline config:
 
 ```bash
-python run_experiment.py action=full system.actor_lr=0.0001
+pixi run python run_experiment.py \
+  --config-name baseline_ff_ppo_mini_all_512k.yaml \
+  --cfg job
 ```
+
+Check the DDQN network config:
+
+```bash
+pixi run python run_experiment.py \
+  --config-name baseline_ff_ddqn_mini_all_512k.yaml \
+  --cfg job \
+  --package network
+```
+
+Preview the benchmark launcher without starting training:
+
+```bash
+pixi run python scripts/launch_baseline_benchmarks.py \
+  --datasets agi1 \
+  --scenario-limit 1 \
+  --num-seeds 1 \
+  --algorithms ppo ddqn pqn reinforce \
+  --dry-run
+```
+
+The dry run should report one job for each selected algorithm.
+
+## Running Experiments
+
+Run a single baseline config:
+
+```bash
+pixi run python run_experiment.py \
+  --config-name baseline_ff_ppo_mini_all_512k.yaml \
+  hydra.job.chdir=false
+```
+
+Run the benchmark launcher over the configured ARC-AGI-1 and ConceptARC task
+sets:
+
+```bash
+pixi run python scripts/launch_baseline_benchmarks.py \
+  --algorithms ppo ddqn pqn reinforce \
+  --datasets all \
+  --num-seeds 5 \
+  --total-timesteps 10000000 \
+  --total-num-envs 512
+```
+
+The launcher writes results to:
+
+```text
+results/baseline_benchmarks/subset_baselines_10m_5seed/
+```
+
+It records scheduler state in `launcher_status.json`, job logs in
+`launcher_logs/`, and per-run summaries under `runs/`.
+
+Use `--retry-failed` to resume a run after fixing failed jobs.
+
+## Plotting
+
+After benchmark jobs finish, generate the comparison figures with:
+
+```bash
+pixi run python scripts/plot_baseline_benchmarks.py
+```
+
+The plotter reads `success_curve.csv` files under the benchmark results
+directory and writes figures to the corresponding `figures/` directory.
+
+## Notes
+
+- Full benchmark runs use seeds `0` through `4` by default.
+- The launcher uses point actions for larger-grid datasets.
+- Online Weights & Biases logging is disabled unless a W&B project is passed to
+  the launcher.
+- DDQN and PQN rely on the local Stoix submodule state in this repository. Keep
+  the submodule initialized when running those baselines.

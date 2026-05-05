@@ -1,0 +1,108 @@
+defaults:
+  - logger: wandb
+  - arch: anakin
+  - system: q_learning/ff_pqn
+  - network: arc_shallow_cnn_hwc_q_value
+  - env: jaxarc/default
+  - dataset: mini_arc
+  - reward: balanced
+  - action: raw
+  - _self_
+
+arch:
+  seed: 42
+  total_timesteps: 512000
+  total_num_envs: 512
+  num_evaluation: 10
+  num_eval_episodes: 16
+  evaluation_greedy: true
+  absolute_metric: false
+
+system:
+  rollout_length: 8
+  epochs: 4
+  num_minibatches: 16
+  decay_learning_rates: false
+  decay_epsilon: true
+
+hydra:
+  searchpath:
+    - file://stoix/stoix/configs
+    - file://configs
+    - pkg://jaxarc.conf
+
+environment:
+  max_episode_steps: 100
+  debug_level: "minimal"
+  auto_reset: true
+
+logging:
+  log_operations: false
+  log_rewards: false
+  log_frequency: 50
+  batched_logging_enabled: true
+
+storage:
+  base_output_dir: "outputs/research/baseline_benchmarks/baseline_mini_all"
+  run_name: "baseline_ff_pqn_mini_all_512k"
+  episodes_dir: "episodes"
+  debug_dir: "debug"
+  visualization_dir: "visualizations"
+  logs_dir: "logs"
+  max_episodes_per_run: 400
+  max_storage_gb: 30.0
+  cleanup_policy: "manual"
+  create_run_subdirs: true
+  clear_output_on_start: false
+
+visualization:
+  enabled: false
+  episode_summaries: false
+  step_visualizations: false
+
+wandb:
+  enabled: false
+  project_name: "jaxarc-experiments"
+  entity: null
+  tags: ["jaxarc", "baseline-benchmark", "baseline", "mini-all", "ff-pqn", "512k"]
+  notes: "Baseline FF-PQN Mini-all run with 512 envs and 512k steps."
+  group: null
+  job_type: "baseline"
+  offline_mode: false
+  save_code: true
+
+grid_initialization:
+  demo_weight: 1.0
+  permutation_weight: 0.0
+  empty_weight: 0.0
+  random_weight: 0.0
+  permutation_types: [rotate, reflect, color_remap]
+  random_density: 0.3
+  random_pattern_type: sparse
+
+logger:
+  base_exp_path: results/baseline_benchmarks/baseline_mini_all/stoix_logs
+  loggers:
+    console:
+      enabled: true
+    wandb:
+      enabled: false
+    neptune:
+      enabled: false
+    json:
+      enabled: true
+    tensorboard:
+      enabled: false
+  checkpointing:
+    save_model: false
+    load_model: false
+
+env:
+  wrapper: null
+  scenario:
+    name: Mini-all
+    task_name: mini_all_baseline_ff_pqn
+  observation_wrappers:
+    answer_grid: true
+    input_grid: true
+    contextual: true

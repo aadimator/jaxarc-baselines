@@ -11,7 +11,7 @@ submitit = ">=1.5.2,<2"
 
 [pypi-dependencies]
 jaxarc_baselines = { path = ".", editable = true }
-JaxARC = { path = "../JaxARC", editable = true }
+JaxARC = ">=1.0.3, <2"
 stoix = { path = "./stoix", editable = true }
 
 # Add a version constraint for protobuf to fix the TypeError from tensorboard_logger.
@@ -26,7 +26,5 @@ jax = { version = ">=0.4.23", extras = ["cpu"] }
 
 [activation.env]
 JAX_PLATFORMS = "cuda,cpu"
-# CUDA_VISIBLE_DEVICES = "3"
-# XLA_FLAGS = "--xla_gpu_autotune_level=0"
 JAX_COMPILATION_CACHE_DIR="/tmp/jax_cache"
 LD_LIBRARY_PATH = ""

@@ -94,7 +94,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/ab/b1/eb05a423eb801ab7d0715d6a3b28d92589e30b437052553df19ca2087240/gym-0.26.2.tar.gz
       - pypi: https://files.pythonhosted.org/packages/41/55/55d157aa8693090954fc9639bf27218240517c3bc7afa6e97412da6ebfd9/gym_notices-0.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a0/e2/a111dbb8625af467ea4760a1373d6ef27aac3137931219902406ccc05423/gymnasium-1.2.0-py3-none-any.whl
-      - pypi: git+https://github.com/RobertTLange/gymnax.git#18f2e7f3cffafc7042c76fdc538c83957418a9a9
+      - pypi: git+https://github.com/RobertTLange/gymnax.git#00b27839bce01c0b35f52878eedcd5b67835c149
       - pypi: https://files.pythonhosted.org/packages/15/07/86397573efefff941e100367bbda0b21496ffcdb34db7ab51912994c32a2/hf_xet-1.1.10-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/fe/85/a18508becfa01f1e4351b5e18651b06d210dbd96debccd48a452acccb901/huggingface_hub-0.35.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1e/c7/316e7ca04d26695ef0635dc81683d628350810eb8e9b2299fc08ba49f366/humanize-4.13.0-py3-none-any.whl
@@ -113,6 +113,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/58/c4/a603473feae00cd1b20ba3829413da53fd48977af052491ea7dab16fa618/jax_cuda12_pjrt-0.5.3-py3-none-manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/bf/15/740d34283f041e1f28452eace1b25afc7cf65117e2011d3208330aa156f1/jax_cuda12_plugin-0.5.3-cp311-cp311-manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/1d/2d/a94edc83d0012a5968abe1a16a6dc402100a76323fb30e229afe0f75bfe3/jax_tqdm-0.4.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/5a/f7/11976cf95d8ca8340f45137856edf8a82bec4910c1331f39ce45034ee09f/jaxarc-1.0.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f3/e1/3ac61628a0cc048a83a088a67603486d7fbfd68ee0e8f8a22b41a0ddecf6/jaxgl-1.0.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/67/de/50debb40944baa5ba459604578f8c721be9f38c78ef9e8902895566e6a66/jaxlib-0.5.3-cp311-cp311-manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/45/d8/55e0901103c93d57bab3b932294c216f0cbd49054187ce29f8f13808d530/jaxopt-0.8.5-py3-none-any.whl
@@ -161,7 +162,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/be/9c/92789c596b8df838baa98fa71844d84283302f7604ed565dafe5a6b5041a/oauthlib-3.3.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e3/94/1843518e420fa3ed6919835845df698c7e27e183cb997394e4a670973a65/omegaconf-2.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/23/cd/066e86230ae37ed0be70aae89aabf03ca8d9f39c8aea0dec8029455b5540/opt_einsum-3.4.0-py3-none-any.whl
-      - pypi: git+https://github.com/google-deepmind/optax.git#26ba03c0b4ec86aa0b205dcb01c294c3fa3305b1
+      - pypi: git+https://github.com/google-deepmind/optax.git#8098d6c7895e3400cb3ecdcd703556e1a849286f
       - pypi: https://files.pythonhosted.org/packages/db/3b/49a9a1986215dd342525974deeb17c260a83fee8fad147276fd710ac8718/optree-0.17.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/99/e8/acef62ec5c4b8658eacfce23d3f4e866d3cf5d07c509ca03eebb0c420a6c/orbax_checkpoint-0.11.24-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/20/12/38679034af332785aac8774540895e234f4d07f7545804097de4b666afd8/packaging-25.0-py3-none-any.whl
@@ -251,7 +252,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/5d/8f/a32a99fc03e4b37e31b57cb9cefc65050ea08147a8ce12f288616b05ef54/wrapt-1.17.3-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl
       - pypi: git+https://github.com/corl-team/xland-minigrid.git#0d306d1414dcb6e451358d94e7d9a91879462ee1
       - pypi: https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl
-      - pypi: ../JaxARC
       - pypi: ./
       - pypi: ./stoix
       osx-arm64:
@@ -329,7 +329,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/01/61/d4b89fec821f72385526e1b9d9a3a0385dda4a72b206d28049e2c7cd39b8/gitpython-3.1.45-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b6/a6/6ea2f73ad4474896d9e38b3ffbe6ffd5a802c738392269e99e8c6621a461/glfw-2.10.0-py2.py27.py3.py30.py31.py32.py33.py34.py35.py36.py37.py38.py39.py310.py311.py312.py313.py314-none-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/a0/e2/a111dbb8625af467ea4760a1373d6ef27aac3137931219902406ccc05423/gymnasium-1.2.0-py3-none-any.whl
-      - pypi: git+https://github.com/RobertTLange/gymnax.git#18f2e7f3cffafc7042c76fdc538c83957418a9a9
+      - pypi: git+https://github.com/RobertTLange/gymnax.git#00b27839bce01c0b35f52878eedcd5b67835c149
       - pypi: https://files.pythonhosted.org/packages/31/f9/6215f948ac8f17566ee27af6430ea72045e0418ce757260248b483f4183b/hf_xet-1.1.10-cp37-abi3-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/fe/85/a18508becfa01f1e4351b5e18651b06d210dbd96debccd48a452acccb901/huggingface_hub-0.35.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1e/c7/316e7ca04d26695ef0635dc81683d628350810eb8e9b2299fc08ba49f366/humanize-4.13.0-py3-none-any.whl
@@ -346,6 +346,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/86/bb/fdc6513a9aada13fd21e9860e2adee5f6eea2b4f0a145b219288875acb26/jax-0.5.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/84/6a/0c3c02436165f5a37fb4ab8ca1cbae759802b78b9ab1cab89b0fde3640ef/jax2d-1.0.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1d/2d/a94edc83d0012a5968abe1a16a6dc402100a76323fb30e229afe0f75bfe3/jax_tqdm-0.4.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/5a/f7/11976cf95d8ca8340f45137856edf8a82bec4910c1331f39ce45034ee09f/jaxarc-1.0.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f3/e1/3ac61628a0cc048a83a088a67603486d7fbfd68ee0e8f8a22b41a0ddecf6/jaxgl-1.0.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/c2/f2/d9397f264141f2289e229b2faf3b3ddb6397b014a09abe234367814f9697/jaxlib-0.5.3-cp311-cp311-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/45/d8/55e0901103c93d57bab3b932294c216f0cbd49054187ce29f8f13808d530/jaxopt-0.8.5-py3-none-any.whl
@@ -384,7 +385,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/be/9c/92789c596b8df838baa98fa71844d84283302f7604ed565dafe5a6b5041a/oauthlib-3.3.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e3/94/1843518e420fa3ed6919835845df698c7e27e183cb997394e4a670973a65/omegaconf-2.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/23/cd/066e86230ae37ed0be70aae89aabf03ca8d9f39c8aea0dec8029455b5540/opt_einsum-3.4.0-py3-none-any.whl
-      - pypi: git+https://github.com/google-deepmind/optax.git#26ba03c0b4ec86aa0b205dcb01c294c3fa3305b1
+      - pypi: git+https://github.com/google-deepmind/optax.git#8098d6c7895e3400cb3ecdcd703556e1a849286f
       - pypi: https://files.pythonhosted.org/packages/99/e8/acef62ec5c4b8658eacfce23d3f4e866d3cf5d07c509ca03eebb0c420a6c/orbax_checkpoint-0.11.24-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/20/12/38679034af332785aac8774540895e234f4d07f7545804097de4b666afd8/packaging-25.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/38/18/48f10f1cc5c397af59571d638d211f494dba481f449c19adbd282aa8f4ca/pandas-2.3.2-cp311-cp311-macosx_11_0_arm64.whl
@@ -472,7 +473,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/31/25/3e8cc2c46b5329c5957cec959cb76a10718e1a513309c31399a4dad07eb3/wrapt-1.17.3-cp311-cp311-macosx_11_0_arm64.whl
       - pypi: git+https://github.com/corl-team/xland-minigrid.git#0d306d1414dcb6e451358d94e7d9a91879462ee1
       - pypi: https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl
-      - pypi: ../JaxARC
       - pypi: ./
       - pypi: ./stoix
 packages:
@@ -1716,7 +1716,7 @@ packages:
   - dill>=0.3.7 ; extra == 'testing'
   - array-api-extra>=0.7.0 ; extra == 'testing'
   requires_python: '>=3.10'
-- pypi: git+https://github.com/RobertTLange/gymnax.git#18f2e7f3cffafc7042c76fdc538c83957418a9a9
+- pypi: git+https://github.com/RobertTLange/gymnax.git#00b27839bce01c0b35f52878eedcd5b67835c149
   name: gymnax
   version: 0.0.9
   requires_dist:
@@ -2164,10 +2164,10 @@ packages:
   - jaxgl ; extra == 'dev'
   - pygame ; extra == 'dev'
   requires_python: '>=3.10'
-- pypi: ../JaxARC
+- pypi: https://files.pythonhosted.org/packages/5a/f7/11976cf95d8ca8340f45137856edf8a82bec4910c1331f39ce45034ee09f/jaxarc-1.0.3-py3-none-any.whl
   name: jaxarc
   version: 1.0.3
-  sha256: 9876438bf0495c0e38160a9c7d1603d1d83f497fe5047a43139124257354f8e2
+  sha256: 2099c18588beb7afd194a401d41840ecd25fe7ef4797b530a17ce1b714309b28
   requires_dist:
   - cairosvg>=2.8.2,<3
   - drawsvg>=2.4.0,<3
@@ -3072,7 +3072,7 @@ packages:
   version: 3.4.0
   sha256: 69bb92469f86a1565195ece4ac0323943e83477171b91d24c35afe028a90d7cd
   requires_python: '>=3.8'
-- pypi: git+https://github.com/google-deepmind/optax.git#26ba03c0b4ec86aa0b205dcb01c294c3fa3305b1
+- pypi: git+https://github.com/google-deepmind/optax.git#8098d6c7895e3400cb3ecdcd703556e1a849286f
   name: optax
   version: 0.2.9.dev0
   requires_dist:

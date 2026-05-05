@@ -1,0 +1,19 @@
+# --- Defaults FF-DDQN ---
+
+system_name: ff_ddqn
+
+# --- RL hyperparameters ---
+rollout_length: 2
+epochs: 16
+warmup_steps: 16
+total_buffer_size: 1_000_000
+total_batch_size: 512
+q_lr: 5e-4
+tau: 0.005
+gamma: 0.99
+max_grad_norm: 0.5
+decay_learning_rates: False
+training_epsilon: 0.1
+evaluation_epsilon: 0.00
+max_abs_reward: 1000.0
+huber_loss_parameter: 0.0
