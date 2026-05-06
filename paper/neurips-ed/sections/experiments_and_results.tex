@@ -5,13 +5,6 @@ We validate JaxARC through three experiments: a raw throughput comparison agains
 
 \subsection{Throughput Scaling}
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=1.0\linewidth]{Figures/throughput_combined_linear.pdf}
-\caption{Throughput scaling (Steps Per Second) vs. number of parallel environments on CPU (left), RTX 3090 (center), and H100 (right). JaxARC scales near-linearly, while ARCLE saturates due to multiprocessing overhead.}
-\label{fig:throughput_combined_linear}
-\end{figure}
-
 \begin{table}[t]
 \centering
 \caption{Peak throughput at matched batch sizes. Speedup compares identical batch sizes where both frameworks completed without errors.}
@@ -28,11 +21,16 @@ H100 GPU & 131\,072 & 86.7M & 26K & 3,323$\times$ \\
 \end{tabular}
 \end{table}
 
+\begin{figure}[t]
+\centering
+\includegraphics[width=1.0\linewidth]{Figures/throughput_combined_linear.pdf}
+\caption{Throughput scaling (Steps Per Second) vs. number of parallel environments on CPU (left), RTX 3090 (center), and H100 (right).}
+\label{fig:throughput_combined_linear}
+\end{figure}
+
 To quantify the speed advantage of accelerator-native simulation, we benchmark JaxARC against ARCLE \citep{leeARCLEAbstractionReasonin2024} on a fixed ARC task. Our protocol measures steady-state environment steps per second (SPS) over batch sizes ranging from $2^0$ (1) to $2^{20}$ ($1,048,576$ parallel environments) for the matched single-device sweep, with an extended multi-device \texttt{pmap} sweep on the H100 GPU. Each configuration runs $100$ steps per environment, is repeated $10$ times, and is reported as mean environment steps per second. We tested three hardware platforms: an Apple M2 Pro CPU, an NVIDIA RTX 3090 (24GB), and an NVIDIA H100 (80GB). JaxARC throughput is recorded after JIT compilation to isolate steady-state performance. ARCLE operates without a compilation phase and is evaluated in both synchronous and asynchronous modes. The metric captures simulator step cost only and excludes policy-update overhead.
 
-Results in Figure \ref{fig:throughput_combined_linear} show that JaxARC scales near-linearly on all platforms, while ARCLE's performance saturates around $60,000$ steps per second due to Python's multiprocessing overhead (see Appendix \ref{app:throughput}). Table~\ref{tab:performance} reports peak throughput at matched batch sizes where both frameworks ran successfully. On GPU platforms, a crossover occurs around $32$ parallel environments: below this scale, JAX's kernel-dispatch and host-device transfer overhead makes ARCLE's lightweight Python loop faster (see Figure \ref{fig:throughput_log_appendix}). Above $32$ environments, JaxARC amortizes this fixed cost and throughput rises rapidly. At $131,072$ parallel environments, single-device JaxARC achieves a $903\times$ speedup on the RTX 3090 and a $3,323\times$ speedup on the H100. The corresponding multi-device \texttt{pmap} H100 run reaches a $5,439\times$ speedup at the same ARCLE-matched batch. At larger batch sizes, ARCLE crashes from memory exhaustion due to OS-level process duplication; JaxARC continues scaling to $101.3$ million steps per second on one H100 at batch size $262,144$ and to $790.4$ million steps per second with multi-device \texttt{pmap}. If we compare the best observed configuration for each system on H100 GPU, regardless of batch size or vectorization mode, ARCLE peaks at $54$K SPS while JaxARC peaks at $790.4$M SPS, a $14,615\times$ throughput gap. We report this only as a best-observed capacity comparison. A full batch-by-batch breakdown is available in Appendix~\ref{app:throughput}.
-
-This throughput makes it feasible to train and evaluate RL agents across hundreds of ARC tasks, multiple algorithms, and multiple seeds within the time budget of a single research project.
+Results in Figure \ref{fig:throughput_combined_linear} show that JaxARC scales near-linearly on all platforms, while ARCLE's performance saturates around $60,000$ steps per second due to Python's multiprocessing overhead (see Appendix \ref{app:throughput}). Table~\ref{tab:performance} reports peak throughput at matched batch sizes where both frameworks ran successfully. On GPU platforms, a crossover occurs around $32$ parallel environments: below this scale, JAX's kernel-dispatch and host-device transfer overhead makes ARCLE's lightweight Python loop faster (see Figure \ref{fig:throughput_log_appendix}). Above $32$ environments, JaxARC amortizes this fixed cost and throughput rises rapidly. At $131,072$ parallel environments, single-device JaxARC achieves a $903\times$ speedup on the RTX 3090 and a $3,323\times$ speedup on the H100. The corresponding multi-device \texttt{pmap} H100 run reaches a $5,439\times$ speedup at the same ARCLE-matched batch. At larger batch sizes, ARCLE crashes from memory exhaustion due to OS-level process duplication; JaxARC continues scaling to $101.3$ million steps per second on one H100 at batch size $262,144$ and to $790.4$ million steps per second with multi-device \texttt{pmap}. If we compare the best observed configuration for each system on H100 GPU, regardless of batch size or vectorization mode, ARCLE peaks at $54$K SPS while JaxARC peaks at $790.4$M SPS, a $14,615\times$ throughput gap. We report this only as a best-observed capacity comparison. A full batch-by-batch breakdown is available in Appendix~\ref{app:throughput}. This throughput makes it feasible to train and evaluate RL agents across hundreds of ARC tasks, multiple algorithms, and multiple seeds within the time budget of a single research project.
 
 \subsection{Baseline Benchmark}
 \label{sec:baselines}
@@ -50,9 +48,7 @@ The episodic return curves (Figure~\ref{fig:baseline_episode_return}) show a con
 
 \subsection{Observation Interface Analysis}
 
-Finally, we studied how the structure of the observation space affects an agent's ability to learn. Using MiniARC \citep{kimPlaygroundsAbstractionReasoning2022}, we trained PPO across seven different observation configurations. Some settings were ``privileged'' (revealing the answer grid) to isolate the learnability of the editing interface itself.
-
-For this evaluation, we trained PPO agents from the Stoix library \citep{toledoStoixDistributedSingleagent2024} for 500 million steps. The architecture consists of a shallow CNN with two $3\times 3$ convolutional layers (32 channels each) followed by two 128-unit fully connected layers. Agents were trained using a point-action interface and a 150-step episode limit. We applied a balanced reward function detailed in Appendix~\ref{tab:reward_profiles}. All settings include the current working grid. The legend names the extra channels: \emph{Input} adds the original query input, \emph{Answer} adds the target grid, \emph{Contextual} adds support input-output examples, and \emph{None} uses only the working grid.
+Finally, we studied how the structure of the observation space affects an agent's ability to learn. Using MiniARC \citep{kimPlaygroundsAbstractionReasoning2022}, we trained PPO across seven different observation configurations. Some settings were ``privileged'' (revealing the answer grid) to isolate the learnability of the editing interface itself. For this evaluation, we trained PPO agents from the Stoix library \citep{toledoStoixDistributedSingleagent2024} for 500 million steps. The architecture consists of a shallow CNN with two $3\times 3$ convolutional layers (32 channels each) followed by two 128-unit fully connected layers. Agents were trained using a point-action interface and a 150-step episode limit. We applied a balanced reward function detailed in Appendix~\ref{tab:reward_profiles}. All settings include the current working grid. The legend names the extra channels: \emph{Input} adds the original query input, \emph{Answer} adds the target grid, \emph{Contextual} adds support input-output examples, and \emph{None} uses only the working grid.
 
 As shown in Figure~\ref{fig:ppo_obs_diagnostic}, PPO agents reach high success rates when the target grid is visible. This confirms that the action space itself is learnable even for a shallow CNN, provided the goal is explicitly defined in the observation. This mirrors the "answer-given" results in ARCLE \citep{leeARCLEAbstractionReasonin2024} and helps separate the difficulty of grid editing from the difficulty of inferring the rule.
 
