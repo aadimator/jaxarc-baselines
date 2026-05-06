@@ -4,7 +4,7 @@
 \subsection{Task and transition visualization}
 \label{app:visualization}
 
-To support qualitative analysis and debugging, JaxARC includes four primary visualization modes (Figure~\ref{fig:viz_modes_appendix}). These views render the current state of the working grid alongside relevant task context, action selections, and rewards.
+JaxARC ships with four visualization modes (Figure~\ref{fig:viz_modes_appendix}). They render the working grid alongside relevant task context, action selections, and rewards, and are intended for qualitative analysis, debugging, and policy inspection. All renderers operate on host-side copies of the environment state, so they can be combined with any wrapper stack without affecting the compiled rollout.
 
 \begin{figure}[htbp]
     \centering
@@ -36,9 +36,94 @@ To support qualitative analysis and debugging, JaxARC includes four primary visu
             \small (d) Full task context
         \end{minipage}
     \end{minipage}
-    \caption{Visualization modes in JaxARC. (a) A single input-output example. (b) A standalone grid. (c) A single RL step with action and reward annotations. (d) The complete task anatomy, showing support pairs and a held-out query.}
+    \caption{Visualization modes in JaxARC. (a) A single input--output example. (b) A standalone grid. (c) A single RL step with action and reward annotations. (d) The complete task anatomy, showing support pairs and a held-out query.}
     \label{fig:viz_modes_appendix}
 \end{figure}
+
+\subsection{Internal data structures}
+\label{app:data_structures}
+
+JaxARC keeps a strict separation between immutable task data (\texttt{JaxArcTask}), static environment parameters (\texttt{EnvParams}), and the dynamic per-episode state (\texttt{State}). All three are Equinox PyTrees with statically-shaped leaves, so they can be freely passed through \texttt{jit}, \texttt{vmap}, and \texttt{pmap}. Table~\ref{tab:state_layout} lists the dynamic fields of \texttt{State}; the static parameters reside in \texttt{EnvParams} together with the stacked task buffer and the optional subset index view.
+
+\begin{table}[htbp]
+\centering
+\caption{Dynamic per-episode state in JaxARC. All grids and masks are padded to the dataset's $H_{\max} \times W_{\max}$ canvas; counts apply to the active region defined by \texttt{working\_grid\_mask}.}
+\label{tab:state_layout}
+\scriptsize
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Field} & \textbf{Type / shape} & \textbf{Role} \\
+\midrule
+\texttt{working\_grid} & \texttt{int32[$H_{\max}, W_{\max}$]} & Current grid being edited (color values $0$--$9$) \\
+\texttt{working\_grid\_mask} & \texttt{bool[$H_{\max}, W_{\max}$]} & Active cells of the working grid \\
+\texttt{input\_grid}, \texttt{input\_grid\_mask} & same shapes & Original input grid for the active pair \\
+\texttt{target\_grid}, \texttt{target\_grid\_mask} & same shapes & Target grid; masked to background in query mode \\
+\texttt{selected} & \texttt{bool[$H_{\max}, W_{\max}$]} & Selection mask for the next operation \\
+\texttt{clipboard} & \texttt{int32[$H_{\max}, W_{\max}$]} & Buffer for copy/paste operations \\
+\texttt{step\_count} & \texttt{int32} & Current step within the episode \\
+\texttt{task\_idx}, \texttt{pair\_idx} & \texttt{int32} & Indices into the task buffer \\
+\texttt{allowed\_operations\_mask} & \texttt{bool[$35$]} & Currently enabled operations \\
+\texttt{similarity\_score} & \texttt{float32} & Match between working and target grid \\
+\texttt{key} & \texttt{uint32[$2$]} & Per-environment PRNG key \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+The task buffer is a single stacked PyTree of \texttt{JaxArcTask} fields, prepared on the host and transferred to the device once. Each task entry stores up to \texttt{max\_train\_pairs} support pairs (default 10) and \texttt{max\_test\_pairs} query pairs (default 3), together with their boolean masks and an integer task identifier. Subset selection is implemented as an \texttt{int32} \texttt{subset\_indices} array that gathers from the full buffer, so subsets do not require recompilation.
+
+\subsection{Reset and transition semantics}
+\label{app:reset_and_step}
+
+The compiled \texttt{reset} samples a task index from the active subset, samples a pair index uniformly from the available support or query pairs, and constructs the initial \texttt{State} via the working-grid initializer (Section~\ref{app:grid_init}). The \texttt{step} function performs four operations: (i) operation validation under the active filtering policy (Section~\ref{app:action_filter}), (ii) execution of the selected grid operation, (iii) computation of the new similarity score against the target grid, and (iv) emission of a Stoa \citep{toledoStoaJAXnativeInterface2025} \texttt{TimeStep} with one of three step types.
+
+\begin{itemize}
+    \item \texttt{TERMINATED} when the agent submits (operation $34$), regardless of whether the submission is correct.
+    \item \texttt{TRUNCATED} when \texttt{step\_count} reaches \texttt{max\_episode\_steps} without a submission.
+    \item \texttt{MID} otherwise.
+\end{itemize}
+
+The discount factor is set to $0$ on \texttt{TERMINATED} and \texttt{TRUNCATED} steps and to $1$ on \texttt{MID} steps. The episode mode (\texttt{train} vs \texttt{test}) is carried inside \texttt{EnvParams} rather than \texttt{State}, which allows the same compiled environment to be re-used for both visible-target rollouts and hidden-target evaluation by swapping \texttt{EnvParams}.
+
+\paragraph{Reward components.} The submit-aware reward used by every profile is the sum
+\begin{equation*}
+    r_t = \alpha \,\Delta s_t \cdot \mathbb{1}[\text{train}]\;+\; c_{\text{step}}\;+\; b_{\text{succ}}\,\mathbb{1}[\text{submit} \wedge s_t = 1]\;+\; p_{\text{unsolved}}\,\mathbb{1}[\text{submit} \wedge s_t < 1],
+\end{equation*}
+where $s_t$ is the similarity score after the step, $\Delta s_t = s_t - s_{t-1}$ is its improvement, and the constants $\alpha, c_{\text{step}}, b_{\text{succ}}, p_{\text{unsolved}}$ are taken from the active reward profile (Section~\ref{app:reward_config}). Similarity shaping is automatically disabled in evaluation mode, where $\Delta s_t$ is multiplied by $\mathbb{1}[\text{train}]=0$, leaving only the step penalty, success bonus, and unsolved penalty.
+
+\subsection{Grid similarity score}
+\label{app:similarity}
+
+Similarity is computed against the target grid's active region. Let $\mathcal{T}$ be the set of cells with \texttt{target\_grid\_mask}$=$true; the similarity is
+\begin{equation*}
+    s = \frac{1}{|\mathcal{T}|}\sum_{(i,j) \in \mathcal{T}} \mathbb{1}\!\left[\text{working}_{ij} = \text{target}_{ij}\;\wedge\;\text{working\_grid\_mask}_{ij}\right],
+\end{equation*}
+with $s = 1$ when both grids are empty and $s = 0$ when the target is empty but the working grid contains content. This definition penalizes both content mismatches and size mismatches: cells outside the target's active region or outside the working grid's active region count as incorrect, so an oversized or undersized submission cannot reach $s=1$. A solved episode requires $s=1$ at the moment the agent emits the \texttt{SUBMIT} operation; truncation alone never grants the success bonus.
+
+\subsection{Working-grid initialization strategies}
+\label{app:grid_init}
+
+The initial working grid is sampled from a configurable mixture of four strategies. Weights need not sum to one; they are renormalized at compile time. Table~\ref{tab:grid_init} lists the strategies and their behavior. The baseline experiments use \texttt{demo\_weight}$=1.0$ (the remaining weights set to zero), which reproduces the standard ARC formulation in which the agent edits the input grid into the target output. Permutation, empty, and random initializers are intended for curriculum, robustness, and pre-training studies that go beyond the scope of this paper.
+
+\begin{table}[htbp]
+\centering
+\caption{Working-grid initialization strategies. The agent is assigned one strategy per episode using the configured weights.}
+\label{tab:grid_init}
+\scriptsize
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Mode} & \textbf{Source} & \textbf{Behavior} \\
+\midrule
+\texttt{demo} & A randomly sampled support pair input & Standard ARC editing setup \\
+\texttt{permutation} & Demo input with a random rotation, reflection, or color remap & Synthetic augmentation \\
+\texttt{empty} & Padded zero grid with the dataset's grid mask & Pure ``construct from scratch'' setting \\
+\texttt{random} & Sparse or dense Bernoulli pattern over the active mask & Robustness / noise probing \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
 
 \subsection{API usage examples}
 \label{app:usage}
@@ -82,7 +167,7 @@ JaxARC partitions the ARC problem space into datasets, each managed by a parser 
 \subsection{ARC-AGI-1 groups}
 \label{app:arcagi_subsets}
 
-For the ARC-AGI-1 sweep, we adopted the task tiers defined by the ARC-Game project at \url{https://github.com/volotat/ARC-Game/blob/main/tasks/levels.json}. While these labels provide a useful heterogeneous reporting structure, we emphasize that they are subjective and have not been formally calibrated for difficulty. Table~\ref{tab:agi1_subset_counts} lists the counts for each label used in this work.
+For the ARC-AGI-1 sweep, we adopted the task tiers defined by the ARC-Game project at \url{https://github.com/volotat/ARC-Game/blob/main/tasks/levels.json}. While these labels provide a useful heterogeneous reporting structure, we emphasize that they are subjective and have not been formally calibrated for difficulty. Table~\ref{tab:agi1_subset_counts} lists the counts for each label used in this work; counts match the YAML subset files shipped with the JaxARC baseline configurations.
 
 \begin{table}[htbp]
 \centering
@@ -106,25 +191,25 @@ For the ARC-AGI-1 sweep, we adopted the task tiers defined by the ARC-Game proje
 \subsection{ConceptARC concept groups}
 \label{app:concept_mini}
 
-The ConceptARC benchmark is organized into concept groups that isolate specific spatial or logical rules. Our main baseline figure focuses on six representative groups: AboveBelow, Center, CleanUp, CompleteShape, Copy, and Count. The full 16-group breakdown is available in Appendix~\ref{app:extended_baselines}.
+The ConceptARC benchmark is organized into concept groups that isolate specific spatial or logical rules. Our main baseline figure focuses on six representative groups: AboveBelow, Center, CleanUp, CompleteShape, Copy, and Count. The full 16-group breakdown is reported in Appendix~\ref{app:extended_baselines}.
 
 \subsection{Extensibility and custom subsets}
 \label{app:extensibility}
 
 JaxARC is designed for easy extension to new task families and curated subsets. The \texttt{make} function provides a unified interface for instantiating environments from predefined groups, custom YAML files, or individual tasks.
 
-\paragraph{Predefined subsets}
+\paragraph{Predefined subsets.}
 To facilitate standard benchmarking, common task groupings are predefined and available immediately:
 \begin{itemize}
     \item \textbf{ConceptARC:} All 16 concept groups are registered as subsets (e.g., \texttt{make("Concept-AboveBelow")}).
     \item \textbf{ARC-AGI:} The standard splits are available as \texttt{make("AGI1-train")} and \texttt{make("AGI1-eval")}.
-    \item \textbf{Single Tasks:} Any individual task can be isolated by appending its ID to the dataset key (e.g., \texttt{make("Mini-l6ab0lf3...")}). This is particularly useful for debugging specific reasoning failures.
+    \item \textbf{Single tasks:} Any individual task can be isolated by appending its ID to the dataset key (e.g., \texttt{make("Mini-l6ab0lf3...")}). This is particularly useful for debugging specific reasoning failures.
 \end{itemize}
 
-\paragraph{YAML-based subsets}
-A common pattern for creating reproducible benchmarks is to define a subset in a YAML file. These files should be placed in the project configuration directory under \texttt{configs/env/jaxarc/subsets/\{Dataset\}/\{name\}.yaml}. Once the file is saved, the subset can be instantiated using the hyphenated identifier (e.g., \texttt{make("AGI1-my\_benchmark")}). Note that library users should first call \texttt{load\_all\_subsets\_for\_dataset("AGI1")} to discover these files.
+\paragraph{YAML-based subsets.}
+A common pattern for creating reproducible benchmarks is to define a subset in a YAML file. These files should be placed in the project configuration directory under \texttt{configs/env/jaxarc/subsets/\{Dataset\}/\{name\}.yaml}. Once the file is saved, the subset can be instantiated using the hyphenated identifier (e.g., \texttt{make("AGI1-my\_benchmark")}). Library users should first call \texttt{load\_all\_subsets\_for\_dataset("AGI1")} to discover these files at process start-up.
 
-\paragraph{Programmatic registration}
+\paragraph{Programmatic registration.}
 Subsets can also be registered at runtime without modifying the file system. This is useful for implementing curriculum learning or dynamically generating task groups during an experiment.
 
 \begin{lstlisting}[style=jaxarcpython, caption={Programmatic subset registration and single-task instantiation.}]
@@ -139,8 +224,8 @@ env, params = make("Mini-custom_group")
 env, params = make("Mini-Most_Common_color_l6ab0lf3xztbyxsu3p")
 \end{lstlisting}
 
-\paragraph{Zero-config initialization and auto-download}
-To minimize setup friction, JaxARC includes a \texttt{auto\_download} parameter in the \texttt{make} function. When set to \texttt{True}, the environment registry automatically detects if the required dataset files are missing from the local cache. If missing, it securely fetches the dataset from their official repository, and organizes the files in the appropriate local directory before proceeding with environment creation.
+\paragraph{Zero-config initialization and auto-download.}
+To minimize setup friction, JaxARC includes an \texttt{auto\_download} parameter in the \texttt{make} function. When set to \texttt{True}, the environment registry detects if the required dataset files are missing from the local cache, fetches them from the official upstream repository, and organizes the files in the appropriate local directory before proceeding with environment creation.
 
 \begin{lstlisting}[style=jaxarcpython, caption={Zero-config instantiation with automatic dataset acquisition.}]
 from jaxarc.registration import make
@@ -148,6 +233,8 @@ from jaxarc.registration import make
 # Automatically downloads AGI1 tasks if not present locally
 env, params = make("AGI1-entry", auto_download=True)
 \end{lstlisting}
+
+For ARC-AGI datasets the registry performs cross-split lookups automatically: if a task ID is requested but not found in the current split (e.g., \texttt{train}), the system attempts to locate it in the opposite split (\texttt{evaluation}) before reporting an error. This makes it possible to define a custom subset that mixes IDs from both standard splits without writing a custom parser.
 
 \section{Configuration surface}
 \label{app:configuration_surface}
@@ -171,6 +258,7 @@ Operation profile & \texttt{raw} (unless specified otherwise) & Allowed set of e
 Observation stack & answer, input, contextual & Configured grid channels for the policy \\
 Reward profile & balanced & Shaping and submission rewards \\
 Episode limit & 100 steps & Maximum edits before truncation \\
+Grid initializer & \texttt{demo} (weight $1.0$) & Working grid copies the support input \\
 Evaluation schedule & 20 intervals, 32 episodes each & Periodic monitoring during training \\
 \bottomrule
 \end{tabular}
@@ -183,7 +271,7 @@ Evaluation schedule & 20 intervals, 32 episodes each & Periodic monitoring durin
 \subsection{Action wrappers}
 \label{app:action_config}
 
-The environment core receives an operation ID and a selection mask. To keep the action space tractable for discrete RL, we provide wrappers that simplify this interface. The \texttt{point} wrapper, used in our baselines, represents an action as \texttt{(op, row, col)}, while the \texttt{bbox} wrapper accepts bounding boxes. Table~\ref{tab:action_profiles} lists the operation profiles available in the environment.
+The environment core receives an operation ID and a selection mask. To keep the action space tractable for discrete RL, we provide wrappers that simplify this interface. The \texttt{point} wrapper, used in our baselines, represents an action as $(\texttt{op}, \texttt{row}, \texttt{col})$, while the \texttt{bbox} wrapper accepts $(\texttt{op}, r_1, c_1, r_2, c_2)$ tuples that the wrapper materializes into a rectangular mask. A separate \texttt{FlattenActionWrapper} composes any nested \texttt{Dict}/\texttt{MultiDiscrete} action space into a single \texttt{Discrete} action so that off-the-shelf algorithm implementations can consume the interface without modification. Table~\ref{tab:action_profiles} lists the operation profiles available in the environment and Table~\ref{tab:operation_ids} the canonical operation IDs.
 
 \begin{table}[htbp]
 \centering
@@ -214,10 +302,10 @@ The environment core receives an operation ID and a selection mask. To keep the 
 \textbf{Range} & \textbf{Operations} & \textbf{Effect} \\
 \midrule
 0--9 & \texttt{FILL\_[0-9]} & Apply color to selection \\
-10--19 & \texttt{FLOOD\_FILL\_[0-9]} & Flood fill from a selected cell \\
-20--23 & \texttt{MOVE\_[UP|DOWN|LEFT|RIGHT]} & Shift selected region \\
-24--25 & \texttt{ROTATE\_[C|CC]} & Rotate selected area \\
-26--27 & \texttt{FLIP\_[H|V]} & Reflect selected area \\
+10--19 & \texttt{FLOOD\_FILL\_[0-9]} & Flood fill from a single selected cell \\
+20--23 & \texttt{MOVE\_[UP|DOWN|LEFT|RIGHT]} & Shift the selection's bounding box with wrap \\
+24--25 & \texttt{ROTATE\_[C|CC]} & $90^\circ$ rotation of a square selection \\
+26--27 & \texttt{FLIP\_[H|V]} & Reflect inside the selection's bounding box \\
 28--30 & \texttt{COPY}, \texttt{PASTE}, \texttt{CUT} & Clipboard interaction \\
 31--33 & \texttt{CLEAR}, \texttt{COPY\_INPUT}, \texttt{RESIZE} & Grid management \\
 34 & \texttt{SUBMIT} & Terminate and evaluate \\
@@ -226,10 +314,29 @@ The environment core receives an operation ID and a selection mask. To keep the 
 }
 \end{table}
 
+\subsection{Operation semantics}
+\label{app:op_semantics}
+
+Several operations have implicit preconditions that affect how the policy can use them. Knowing them is important when comparing learning curves across operation profiles.
+
+\begin{itemize}
+    \item \textbf{Empty selection.} For object operations (movement, rotation, flip), an empty selection mask is replaced by the working-grid mask, so the action acts on the entire active grid. For clipboard, fill, and flood-fill operations, an empty selection is a no-op.
+    \item \textbf{Bounding-box semantics.} \texttt{MOVE}, \texttt{ROTATE}, and \texttt{FLIP} act on the axis-aligned bounding box of the selection rather than on the individual selected cells. Movement wraps inside that bounding box.
+    \item \textbf{Single-cell flood fill.} \texttt{FLOOD\_FILL\_[0-9]} requires exactly one selected cell. It is silently skipped if the selection contains zero or multiple cells; this avoids ambiguity over which seed pixel to use.
+    \item \textbf{Square rotation.} \texttt{ROTATE\_C} and \texttt{ROTATE\_CC} only execute when the selection's bounding box is square. Non-square requests are no-ops.
+    \item \textbf{Resize.} The bottom-right cell of the selection defines the new active grid size relative to the top-left corner $(0,0)$. Existing content within the new region is preserved; newly active cells are filled with color $0$.
+    \item \textbf{Submit.} \texttt{SUBMIT} terminates the episode unconditionally. The success bonus is granted only if $s=1$ at submission time.
+\end{itemize}
+
+\subsection{Action filtering policy}
+\label{app:action_filter}
+
+When \texttt{dynamic\_action\_filtering} is enabled, every step is checked against an operation mask drawn from the current operation profile and any state-specific restrictions. Out-of-range or disallowed operation IDs are handled according to one of four policies: \texttt{clip} replaces the operation with the nearest allowed ID, \texttt{penalize} behaves identically to \texttt{clip} but is intended for combination with a reward penalty, \texttt{reject} substitutes the sentinel value $-1$ that the core treats as a no-op, and \texttt{passthrough} disables filtering. Our baselines use \texttt{clip} with the \texttt{raw} profile, so any sampled operation ID outside $\{0,\dots,9, 33, 34\}$ is mapped to the nearest legal operation before execution.
+
 \subsection{Observation channels}
 \label{app:observation_wrappers}
 
-The base observation is the current working grid. Observation wrappers concatenate additional grid channels for task context. This design lets the same environment expose diagnostic interfaces, such as answer-visible positive controls, without changing the transition function. Table~\ref{tab:observation_wrappers} lists the wrappers used to build the observation stack.
+The base observation is the current working grid. Observation wrappers concatenate additional grid channels for task context. This design lets the same environment expose diagnostic interfaces, such as answer-visible positive controls, without changing the transition function. Table~\ref{tab:observation_wrappers} lists the wrappers used to build the observation stack. Stacks are composable: the baseline policy uses the working grid plus the input, the (target-mode-aware) answer, and five contextual support pairs, for a total of $13$ channels at $30 \times 30$. Wrappers can be combined in any order; channel counts are additive.
 
 \begin{table}[htbp]
 \centering
@@ -241,33 +348,35 @@ The base observation is the current working grid. Observation wrappers concatena
 \toprule
 \textbf{Wrapper} & \textbf{Channels} & \textbf{Content} \\
 \midrule
-\texttt{InputGridObservationWrapper} & 1 & The original input grid \\
-\texttt{AnswerObservationWrapper} & 1 & Target grid (if visible) \\
-\texttt{ContextualObservationWrapper} & 10 & 5 Support pairs (input/output) \\
+\texttt{InputGridObservationWrapper} & 1 & The original input grid for the active pair \\
+\texttt{AnswerObservationWrapper} & 1 & Target grid (masked to background in query mode) \\
+\texttt{ContextualObservationWrapper} & $2N$ & $N$ support input/output pairs (default $N{=}5$) \\
 \texttt{ClipboardObservationWrapper} & 1 & Current clipboard contents \\
 \bottomrule
 \end{tabular}
 }
 \end{table}
 
+The contextual wrapper draws from the task buffer rather than the policy state, so the additional channels never depend on transient information that could leak the target. In training (support) mode, the wrapper excludes the active pair from the context to prevent the policy from trivially copying the answer it is currently asked to produce.
+
 \subsection{Reward profiles}
 \label{app:reward_config}
 
-Rewards are the sum of scalar penalties and bonuses. The \texttt{balanced} profile used for the reported baselines includes a dense similarity term, which gives shallow model-free agents a learning signal while they explore the editing interface. When evaluating hidden-target submissions, the evaluator can disable this similarity term so that reward does not reveal target-grid information.
+Rewards are the sum of scalar penalties and bonuses, as defined in Section~\ref{app:reset_and_step}. The \texttt{balanced} profile used for the reported baselines includes a dense similarity term, which gives shallow model-free agents a learning signal while they explore the editing interface. When evaluating hidden-target submissions, the evaluator can disable this similarity term so that reward does not reveal target-grid information.
 
 \begin{table}[htbp]
 \centering
-\caption{Scalar reward components in JaxARC profiles.}
+\caption{Scalar reward components in JaxARC profiles. Similarity reward is multiplied by an indicator that is zero in evaluation mode.}
 \label{tab:reward_profiles}
 \scriptsize
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{@{}lrrrrl@{}}
 \toprule
-\textbf{Profile} & \textbf{Step} & \textbf{Success} & \textbf{Unsolved} & \textbf{Similarity} & \textbf{Typical Use} \\
+\textbf{Profile} & \textbf{Step} & \textbf{Success} & \textbf{Unsolved} & \textbf{Similarity} & \textbf{Typical use} \\
 \midrule
-Balanced & -0.02 & 10.0 & -1.0 & 1.0 & Baseline benchmark sweep \\
-Training & -0.005 & 10.0 & -1.0 & 1.0 & Dense-reward training \\
-Evaluation & -0.02 & 10.0 & -1.0 & 0.0 & Hidden-target evaluation \\
+Balanced & $-0.02$ & $10.0$ & $-1.0$ & $1.0$ & Baseline benchmark sweep \\
+Training & $-0.005$ & $10.0$ & $-1.0$ & $1.0$ & Dense-reward training \\
+Evaluation & $-0.02$ & $10.0$ & $-1.0$ & $0.0$ & Hidden-target evaluation \\
 \bottomrule
 \end{tabular}
 }
@@ -276,9 +385,25 @@ Evaluation & -0.02 & 10.0 & -1.0 & 0.0 & Hidden-target evaluation \\
 \section{Baseline experimental protocol}
 \label{app:stoix}
 
-JaxARC implements the Stoix environment interface \citep{toledoStoixDistributedSingleagent2024}. The baseline sweep uses a Stoix environment factory for action flattening, observation channel concatenation, vectorized reset/step calls, and metric logging. The logged metrics include episodic return, exact-match success rate, truncation rate, solve time, and episode length.
+JaxARC integrates with the Stoix framework \citep{toledoStoixDistributedSingleagent2024} through the \texttt{jaxarc.stoix\_adapter.make\_jaxarc\_env} factory, which composes the JaxARC action and observation wrappers with the standard Stoix wrapper chain. Listing~\ref{lst:wrapper_chain} describes the order of wrappers applied to every environment used in this paper; the order is significant because \texttt{AutoResetWrapper} relies on the metric wrappers having already finalized episode statistics for the just-completed episode.
 
-The sweep consists of 4 algorithms $\times$ 35 subsets $\times$ 5 seeds). It covers 16 ConceptARC concept groups and 19 ARC-AGI-1 train/eval or label-based subsets. We report learning curves for the full set of runs in the appendix section \ref{app:extended_baselines} below. Table~\ref{tab:baseline_common_settings} summarizes the common settings across these runs.
+\begin{lstlisting}[style=jaxarcpython, caption={Wrapper chain composed around the JaxARC core for the baseline sweep.}, label={lst:wrapper_chain}]
+# 1. JaxARC core: action and observation wrappers
+env = PointActionWrapper(env)            # (op, row, col) -> mask Action
+env = FlattenActionWrapper(env)          # Dict/MultiDiscrete -> Discrete
+env = AnswerObservationWrapper(env)      # +1 channel (target, mode-aware)
+env = InputGridObservationWrapper(env)   # +1 channel (input grid)
+env = ContextualObservationWrapper(env)  # +2N channels (support pairs)
+
+# 2. Stoix core wrapper chain
+env = AddRNGKey(env)
+env = RecordEpisodeMetrics(env)
+env = ExtendedMetrics(env)               # adds success/similarity tracking
+env = AutoResetWrapper(env)
+env = VmapWrapper(env)
+\end{lstlisting}
+
+The sweep consists of $4$ algorithms $\times$ $35$ subsets $\times$ $5$ seeds $= 700$ training runs. It covers $16$ ConceptARC concept groups and $19$ ARC-AGI-1 train, eval, or label-based subsets. With a budget of $10^7$ environment steps per run, the full sweep amounts to $7\times 10^9$ environment steps. We report learning curves for the full set of runs in Appendix~\ref{app:extended_baselines}. Table~\ref{tab:baseline_common_settings} summarizes the common settings across these runs.
 
 \begin{table}[htbp]
 \centering
@@ -289,14 +414,15 @@ The sweep consists of 4 algorithms $\times$ 35 subsets $\times$ 5 seeds). It cov
 \toprule
 \textbf{Parameter} & \textbf{Value} \\
 \midrule
-Training budget & 10 million environment steps per run \\
+Training budget & $10^7$ environment steps per run \\
 Runs per condition & 5 random seeds \\
-Parallelization & 512 environments \\
+Parallelization & 512 environments per run \\
 Episode limit & 100 steps \\
 Network architecture & Shallow CNN (2-layer torso) \\
 Action interface & \texttt{point} actions (\texttt{raw} profile) \\
 Observation interface & Working grid + input + context + visible answer \\
 Reward profile & balanced \\
+Grid initializer & \texttt{demo} mode only \\
 Evaluation & 20 evaluations, 32 episodes per evaluation \\
 \bottomrule
 \end{tabular}
@@ -305,7 +431,7 @@ Evaluation & 20 evaluations, 32 episodes per evaluation \\
 \subsection{Algorithm hyperparameters}
 \label{app:baseline_hyperparameters}
 
-Hyperparameters for the baseline multi-algorithm sweep are detailed in Table~\ref{tab:algorithm_hyperparams}. They were selected for stable execution across many task families rather than tuned as per-task upper bounds. DDQN uses the online network for action selection and the target network for value evaluation in the Q-learning target.
+Hyperparameters for the baseline multi-algorithm sweep are detailed in Table~\ref{tab:algorithm_hyperparams}. Values were selected for stable execution across many task families rather than tuned as per-task upper bounds. PPO follows the Stoix \texttt{ppo/ff\_ppo} default with our subset-benchmark overrides (rollout length, epoch count, minibatches, learning-rate decay disabled). DDQN uses the online network for action selection and the target network for value evaluation in the Q-learning target. PQN uses Q$(\lambda)$ targets with no replay buffer and a linearly decayed exploration schedule that anneals $\epsilon$ from $1.0$ to $0.1$ over the first half of training. REINFORCE uses an actor--critic variant with on-policy advantages and an entropy bonus.
 
 \begin{table}[htbp]
 \centering
@@ -316,16 +442,19 @@ Hyperparameters for the baseline multi-algorithm sweep are detailed in Table~\re
 \toprule
 \textbf{Hyperparameter} & \textbf{PPO} & \textbf{DDQN} & \textbf{PQN} & \textbf{REINFORCE} \\
 \midrule
-Learning rate & $3\cdot10^{-4}$ & $5\cdot10^{-4}$ & $5\cdot10^{-4}$ & $3\cdot10^{-4}$ \\
+Learning rate & $3\!\cdot\!10^{-4}$ & $5\!\cdot\!10^{-4}$ & $5\!\cdot\!10^{-4}$ & $3\!\cdot\!10^{-4}$ \\
 Rollout length & 25 & 2 & 8 & 32 \\
 Epochs per update & 4 & 16 & 4 & n/a \\
 Minibatches & 8 & n/a & 16 & n/a \\
 Discount ($\gamma$) & 0.99 & 0.99 & 0.99 & 0.99 \\
-Advantage estimation & $\lambda=0.95$ & n/a & $q\_\lambda=0.95$ & n/a \\
-Entropy reg. & 0.01 & n/a & n/a & 0.001 \\
+Advantage estimation & GAE($\lambda{=}0.95$) & n/a & Q($\lambda{=}0.95$) & n/a \\
+Replay buffer & n/a & $10^6$ transitions & none & n/a \\
+Target update ($\tau$) & n/a & $0.005$ & n/a & n/a \\
+Entropy regularization & 0.01 & n/a & n/a & 0.001 \\
 Value weight & 0.5 & n/a & n/a & 1.0 \\
-Exploration & Policy entropy & $\epsilon=0.1$ & $\epsilon$-decay & Policy entropy \\
+Exploration & Policy entropy & $\epsilon{=}0.1$ & $\epsilon$-decay $1.0\!\to\!0.1$ & Policy entropy \\
 Gradient clip & 0.5 & 0.5 & 0.5 & 0.5 \\
+Learning-rate decay & off & off & off & off \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -333,12 +462,22 @@ Gradient clip & 0.5 & 0.5 & 0.5 & 0.5 \\
 \subsection{Network architecture}
 \label{app:network_architecture}
 
-The feedforward baselines use a shallow convolutional network. The actor and critic torsos each contain two $3\times3$ convolutional layers with 32 channels, stride 1, SiLU activations, no layer normalization, and two fully connected layers of width 128 before the action or value head. This architecture keeps the benchmark tractable across algorithms, subsets, and seeds. Stronger architectures may change both absolute performance and algorithm ordering.
+The feedforward baselines use a shallow convolutional network. The actor and critic torsos each contain two $3\times3$ convolutional layers with $32$ channels, stride $1$, SiLU activations, no layer normalization, and two fully connected layers of width $128$ before the action or value head. Inputs are arranged as $H{\times}W{\times}C$ tensors (\texttt{channel\_first}$=$\texttt{False}) so that the JaxARC observation wrappers' channel concatenation is consumed without transposition. This architecture keeps the benchmark tractable across algorithms, subsets, and seeds. Stronger architectures may change both absolute performance and algorithm ordering; the discussion in the main text frames the reported numbers as a reproducible lower bound rather than an upper limit.
+
+\subsection{Episode metrics}
+\label{app:episode_metrics}
+
+The \texttt{ExtendedMetrics} wrapper inserted in the chain (Listing~\ref{lst:wrapper_chain}) tracks five additional per-episode statistics, accumulated across the rollout and committed to the metrics dictionary at the moment the episode terminates: \texttt{best\_similarity} (the maximum similarity reached at any step), \texttt{solved} (a boolean for $s=1$ at submission), \texttt{steps\_to\_solve} (the step index of the first $s=1$ event, $0$ otherwise), \texttt{final\_similarity} (the similarity score at the terminal step), and \texttt{was\_truncated} (whether the episode ended via the step limit). A small post-processing function turns these per-episode tensors into the aggregated quantities reported in the curves: \emph{success rate}, \emph{average steps to solve} over solved episodes, \emph{truncation rate}, and the mean of \texttt{best\_similarity} and \texttt{final\_similarity}.
+
+\subsection{Compute and software environment}
+\label{app:compute_env}
+
+All baseline runs were executed with the JaxARC distribution at the project's pinned commit, the \texttt{stoix} fork shipped in the baselines repository, and JAX with the CUDA backend. Each run used a single NVIDIA H100 GPU with 80\,GB of memory and $512$ vectorized environments. With this configuration, a $10^7$-step run takes on the order of one to two hours of wall-clock time depending on the algorithm; the full $700$-run sweep was scheduled through the \texttt{jaxarc\_experiments.yaml} launcher with a maximum of four concurrent jobs per node. Throughput-benchmark measurements were taken on a separate set of devices (Apple M2 Pro, NVIDIA RTX 3090, NVIDIA H100) under the protocol of Section~\ref{app:throughput}. The pinned software environment used for the throughput benchmark is Python 3.13.5, JAX 0.6.2, NumPy 2.3.1, and Gymnasium 1.2.0; ARCLE was used at \texttt{ARCLE/RawARCEnv-v0} with \texttt{MiniARCLoader}.
 
 \section{Throughput benchmark protocol}
 \label{app:throughput}
 
-The throughput benchmark uses MiniARC task \texttt{Most\_Common\_color\_l6ab0lf3xztbyxsu3p}. Each measurement executes 100 steps per environment with automatic reset on episode termination. JaxARC timings exclude one-time JIT compilation and measure steady-state rollout time. ARCLE is measured without a compilation phase in synchronous and asynchronous Gymnasium vectorized modes. The hardware platforms are an Apple M2 Pro CPU, an NVIDIA RTX 3090 GPU, and an NVIDIA H100 GPU. The software environment used Python 3.13.5, JAX 0.6.2, NumPy 2.3.1, and Gymnasium 1.2.0. ARCLE used \texttt{ARCLE/RawARCEnv-v0} with \texttt{MiniARCLoader} and a $5\times5$ maximum grid size in the matched benchmark.
+The throughput benchmark uses MiniARC task \texttt{Most\_Common\_color\_l6ab0lf3xztbyxsu3p}. Each measurement executes $100$ steps per environment with automatic reset on episode termination. JaxARC timings exclude one-time JIT compilation and measure steady-state rollout time. ARCLE is measured without a compilation phase in synchronous and asynchronous Gymnasium vectorized modes. The hardware platforms are an Apple M2 Pro CPU, an NVIDIA RTX 3090 GPU, and an NVIDIA H100 GPU. ARCLE used \texttt{ARCLE/RawARCEnv-v0} with \texttt{MiniARCLoader} and a $5{\times}5$ maximum grid size in the matched benchmark, mirroring JaxARC's MiniARC configuration so that no framework is penalized by an oversized canvas.
 
 \begin{figure}[htbp]
 \centering
@@ -347,7 +486,7 @@ The throughput benchmark uses MiniARC task \texttt{Most\_Common\_color\_l6ab0lf3
 \label{fig:throughput_log_appendix}
 \end{figure}
 
-Detailed speedup comparisons for each hardware tier are provided in Tables~\ref{tab:speedup_cpu_m2_pro}, \ref{tab:speedup_rtx_3090}, and \ref{tab:speedup_h100_gpu}. The H100 JIT run continues beyond the largest matched ARCLE batch and peaks at 101.3M SPS at batch size 262\,144. A separate multi-device \texttt{pmap} benchmark reaches 790.4M SPS at batch size 2\,097\,152 and gives a 5\,438.8$\times$ speedup at the largest ARCLE-matched batch.
+Detailed speedup comparisons for each hardware tier are provided in Tables~\ref{tab:speedup_cpu_m2_pro}, \ref{tab:speedup_rtx_3090}, and \ref{tab:speedup_h100_gpu}. The H100 JIT run continues beyond the largest matched ARCLE batch and peaks at $101.3$M SPS at batch size $262{,}144$. A separate multi-device \texttt{pmap} benchmark reaches $790.4$M SPS at batch size $2{,}097{,}152$ and gives a $5{,}438.8\times$ speedup at the largest ARCLE-matched batch. We report the multi-device numbers separately because they require eight GPUs and are not directly comparable to ARCLE's CPU-only execution model; the matched-batch single-device numbers in the main results table provide the conservative comparison.
 
 \begin{table}[htbp]
 \centering
@@ -446,7 +585,9 @@ Batch Size & JaxARC SPS & Mode & ARCLE SPS & Mode & Speedup \\
 
 The extended baseline figures separate shaped editing progress from exact task solving. Episodic return increases on several ARC-AGI and ConceptARC subsets, especially for PPO, but exact success remains substantially lower. This gap indicates that the agents often learn partial edits, reward-shaping behavior, or frequent submissions without reliably producing the full target grid.
 
-Across ARC-AGI groupings, PPO is strongest, REINFORCE is usually the closest competitor, and the value-based methods remain lower or less stable across most panels. ConceptARC shows larger variation across concept groups. Count is the clearest positive case for the shallow CNN policy-gradient agents, while DDQN shows an early shaped-return gain on Count that does not persist through the full run. Several other groups show moderate shaped return with much weaker exact success. These per-family curves are therefore more informative than a single aggregate score, which would mix qualitatively different learning regimes.
+Across ARC-AGI groupings, PPO is strongest, REINFORCE is usually the closest competitor, and the value-based methods remain lower or less stable across most panels. ConceptARC shows larger variation across concept groups. Count is the clearest positive case for the shallow-CNN policy-gradient agents, while DDQN shows an early shaped-return gain on Count that does not persist through the full run. Several other groups show moderate shaped return with much weaker exact success. These per-family curves are therefore more informative than a single aggregate score, which would mix qualitatively different learning regimes.
+
+The success-rate panel (Figure~\ref{fig:combined_success_rate}) is the strict measure consistent with the official ARC scoring rule. Reading it together with the episodic-return panels makes the gap between shaping progress and exact submission visible at the per-subset level, and clarifies which subsets remain open problems even for algorithms whose shaped return curves trend upward.
 
 \begin{figure}[htbp]
 \centering
