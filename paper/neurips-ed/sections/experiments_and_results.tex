@@ -1,7 +1,7 @@
 \section{Experiments and results}
 \label{sec:experiments}
 
-We validate JaxARC through three experiments: a raw throughput comparison against an existing CPU-bound environment, a multi-algorithm baseline sweep across ARC-AGI 1 and ConceptARC, and a diagnostic study on how observation interfaces affect learnability.
+We validate JaxARC through three experiments: a raw throughput comparison against an existing CPU-bound environment, a multi-algorithm baseline sweep across ARC-AGI-1 and ConceptARC, and a diagnostic study on how observation interfaces affect learnability.
 
 \subsection{Throughput Scaling}
 
@@ -44,15 +44,15 @@ The episodic return curves (Figure~\ref{fig:baseline_episode_return}) show a con
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.88\linewidth]{Figures/combined_episode_return.pdf}
-\caption{Episodic return across ARC-AGI 1 and ConceptARC groupings for four RL algorithms. Shaded regions show $\pm1$ standard deviation across 5 seeds.}
+\caption{Episodic return across ARC-AGI-1 and ConceptARC groupings for four RL algorithms. Shaded regions show $\pm1$ standard deviation across 5 seeds.}
 \label{fig:baseline_episode_return}
 \end{figure}
 
 \subsection{Observation Interface Analysis}
 
-Finally, we studied how the structure of the observation space affects an agent's ability to learn. Using MiniARC \citep{kimPlaygroundsAbstractionReasoning2022}, we trained PPO across seven different observation configurations. Some settings were ``privileged'' (revealing the answer grid) to isolate the learnability of the editing interface itself. For this evaluation, we trained PPO agents from the Stoix library \citep{toledoStoixDistributedSingleagent2024} for 500 million steps. The architecture consists of a shallow CNN with two $3\times 3$ convolutional layers (32 channels each) followed by two 128-unit fully connected layers. Agents were trained using a point-action interface and a 150-step episode limit. We applied a balanced reward function detailed in Appendix~\ref{tab:reward_profiles}. All settings include the current working grid. The legend names the extra channels: \emph{Input} adds the original query input, \emph{Answer} adds the target grid, \emph{Contextual} adds support input-output examples, and \emph{None} uses only the working grid.
+Finally, we studied how the structure of the observation space affects an agent's ability to learn. Using MiniARC \citep{kimPlaygroundsAbstractionReasoning2022}, we trained PPO across seven different observation configurations. Some settings were ``privileged'' (revealing the answer grid) to isolate the learnability of the editing interface itself. For this evaluation, we trained PPO agents from the Stoix library \citep{toledoStoixDistributedSingleagent2024} for 500 million steps. The architecture consists of a shallow CNN with two $3\times 3$ convolutional layers (32 channels each) followed by two 128-unit fully connected layers. Agents were trained using a point-action interface and a 150-step episode limit. We applied the balanced reward function detailed in Appendix Table~\ref{tab:reward_profiles}. All settings include the current working grid. The legend names the extra channels: \emph{Input} adds the original query input, \emph{Answer} adds the target grid, \emph{Contextual} adds support input-output examples, and \emph{None} uses only the working grid.
 
-As shown in Figure~\ref{fig:ppo_obs_diagnostic}, PPO agents reach high success rates when the target grid is visible. This confirms that the action space itself is learnable even for a shallow CNN, provided the goal is explicitly defined in the observation. This mirrors the "answer-given" results in ARCLE \citep{leeARCLEAbstractionReasonin2024} and helps separate the difficulty of grid editing from the difficulty of inferring the rule.
+As shown in Figure~\ref{fig:ppo_obs_diagnostic}, PPO agents reach high success rates when the target grid is visible. This confirms that the action space itself is learnable even for a shallow CNN, provided the goal is explicitly defined in the observation. This mirrors the ``answer-given'' results in ARCLE \citep{leeARCLEAbstractionReasonin2024} and helps separate the difficulty of grid editing from the difficulty of inferring the rule.
 
 However, adding more context does not reliably improve performance. Appending input grids or demonstration pairs to the observation often fails to improve success rates, even though those channels contain task-relevant information. The throughput data also shows a direct cost: denser observation spaces slow training without a consistent gain in learnability. Under this shallow CNN setup, the bottleneck is not only access to task context, but also the model's ability to combine information across channels. Wider observations are therefore not a substitute for architectures that can compare support examples with the current grid more directly.
 

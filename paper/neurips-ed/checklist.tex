@@ -5,7 +5,7 @@
 \item {\bf Claims}
     \item[] Question: Do the main claims made in the abstract and introduction accurately reflect the paper's contributions and scope?
     \item[] Answer: \answerYes{}.
-    \item[] Justification: The abstract and introduction state the environment contribution, throughput claims, baseline scope, and observation-wrapper diagnostic. The discussion states the main limitations and avoids claiming that the baselines solve ARC.
+    \item[] Justification: The abstract and introduction state the three contributions of this work: an accelerator-native ARC environment, a multi-algorithm RL baseline sweep over ARC-AGI-1 and ConceptARC, and an observation-wrapper diagnostic on MiniARC. They also report the same throughput numbers ($101.3$M SPS on a single H100, $790.4$M SPS with multi-device \texttt{pmap}, $5{,}439\times$ matched-batch speedup over ARCLE) presented in Section~\ref{sec:experiments} and Appendix~\ref{app:throughput}. 
     \item[] Guidelines:
     \begin{itemize}
         \item The answer \answerNA{} means that the abstract and introduction do not include the claims made in the paper.
@@ -17,7 +17,7 @@
 \item {\bf Limitations}
     \item[] Question: Does the paper discuss the limitations of the work performed by the authors?
     \item[] Answer: \answerYes{}.
-    \item[] Justification: The Discussion includes a limitations paragraph describing the deliberately simple CNN architecture, the fixed training interface, and the fact that the reported baselines are not upper bounds on RL performance.
+    \item[] Justification: The Discussion contains a dedicated \emph{Limitations} paragraph stating that the baselines deliberately use a shallow two-layer CNN with $32$ channels, that the sweep covers only model-free training from scratch, and that meta-learning and test-time adaptation methods are not evaluated. The same paragraph clarifies that the reported curves should be read as fixed-interface lower bounds and not as upper bounds on what RL can achieve on ARC. The Discussion also notes that ARC-Game labels are subjective and that ARCLE crashes from memory exhaustion at large batch sizes, which bounds the matched comparison range.
     \item[] Guidelines:
     \begin{itemize}
         \item The answer \answerNA{} means that the paper has no limitation while the answer \answerNo{} means that the paper has limitations, but those are not discussed in the paper. 
@@ -44,10 +44,10 @@
         \item Theorems and Lemmas that the proof relies upon should be properly referenced. 
     \end{itemize}
 
-    \item {\bf Experimental result reproducibility}
+\item {\bf Experimental result reproducibility}
     \item[] Question: Does the paper fully disclose all the information needed to reproduce the main experimental results of the paper to the extent that it affects the main claims and/or conclusions of the paper (regardless of whether the code and data are provided or not)?
     \item[] Answer: \answerYes{}.
-    \item[] Justification: The Experiments section and Appendix describe the throughput protocol, datasets, action and observation settings, reward profiles, algorithms, hyperparameters, network architecture, hardware, and software versions.
+    \item[] Justification: Section~\ref{sec:experiments} states the throughput protocol, the per-condition training budget ($10^7$ environment steps), the seed count, the algorithms, and the hardware. Appendix~\ref{app:stoix} lists the common settings, the wrapper-chain order, and the per-algorithm hyperparameters. Appendix~\ref{app:throughput} states the exact ARCLE configuration used for matched comparison. Appendix~\ref{app:code_and_data} provides anonymized links to the JaxARC environment and the baselines code, including the Hydra configuration files used to launch every reported run.
     \item[] Guidelines:
     \begin{itemize}
         \item The answer \answerNA{} means that the paper does not include experiments.
@@ -67,7 +67,7 @@
 \item {\bf Open access to data and code}
     \item[] Question: Does the paper provide open access to the data and code, with sufficient instructions to faithfully reproduce the main experimental results, as described in supplemental material?
     \item[] Answer: \answerYes{}.
-    \item[] Justification: The environment implementation, training configurations, and plotting/evaluation scripts are provided as an anonymized code supplement for the submission. The datasets used in the experiments are public datasets cited in the paper.
+    \item[] Justification: Both code repositories are released as anonymized open-source projects for double-blind review (Appendix~\ref{app:code_and_data}): the JaxARC environment at \url{https://anonymous.4open.science/r/JaxARC-8788} and the baselines, configurations, and plotting scripts at \url{https://anonymous.4open.science/r/jaxarc-baselines-561F}. Both are MIT-licensed. Datasets used by the experiments (ARC-AGI-1, ARC-AGI-2, MiniARC, ConceptARC) are public and downloaded automatically by JaxARC's \texttt{auto\_download} hook from their upstream repositories.
     \item[] Guidelines:
     \begin{itemize}
         \item The answer \answerNA{} means that paper does not include experiments requiring code.
@@ -84,7 +84,7 @@
 \item {\bf Experimental setting/details}
     \item[] Question: Does the paper specify all the training and test details (e.g., data splits, hyperparameters, how they were chosen, type of optimizer) necessary to understand the results?
     \item[] Answer: \answerYes{}.
-    \item[] Justification: Section~\ref{sec:experiments} specifies the main training budgets, algorithms, datasets, metrics, and hardware platforms. Appendix~\ref{app:stoix} and Appendix~\ref{app:baseline_hyperparameters} provide the common settings, hyperparameters, and network architecture.
+    \item[] Justification: Section~\ref{sec:experiments} specifies the dataset splits, the per-run training budget, the number of seeds, the algorithm set, the metrics, the hardware platforms, and the rationale for the chosen interface. Appendix~\ref{app:stoix} provides the common settings (parallelization, episode limit, evaluation cadence, grid initializer), Appendix~\ref{app:baseline_hyperparameters} provides the per-algorithm hyperparameters, Appendix~\ref{app:network_architecture} provides the network architecture, and Appendix~\ref{app:reward_config} states the reward profile constants. Hyperparameters were selected for stable execution across many task families rather than per-task tuning, as discussed in Appendix~\ref{app:baseline_hyperparameters}.
     \item[] Guidelines:
     \begin{itemize}
         \item The answer \answerNA{} means that the paper does not include experiments.
@@ -95,7 +95,7 @@
 \item {\bf Experiment statistical significance}
     \item[] Question: Does the paper report error bars suitably and correctly defined or other appropriate information about the statistical significance of the experiments?
     \item[] Answer: \answerYes{}.
-    \item[] Justification: The throughput benchmark repeats each configuration 10 times and reports means. The baseline figures use five random seeds per condition and state that shaded regions show one standard deviation across completed seeds.
+    \item[] Justification: The throughput benchmark repeats each configuration $10$ times and reports the mean steady-state environment steps per second. Each baseline condition is trained with five independent random seeds; the episodic-return curves in Figure~\ref{fig:baseline_episode_return} and the extended figures in Appendix~\ref{app:extended_baselines} show the cross-seed mean as a solid line with $\pm 1$ standard deviation as the shaded region, computed pointwise across seeds.
     \item[] Guidelines:
     \begin{itemize}
         \item The answer \answerNA{} means that the paper does not include experiments.
@@ -112,7 +112,7 @@
 \item {\bf Experiments compute resources}
     \item[] Question: For each experiment, does the paper provide sufficient information on the computer resources (type of compute workers, memory, time of execution) needed to reproduce the experiments?
     \item[] Answer: \answerYes{}.
-    \item[] Justification: Section~\ref{sec:experiments} and Appendix~\ref{app:throughput} list the CPU/GPU platforms used for throughput measurement. Appendix~\ref{app:stoix} states the per-run training budget, parallelization level, and number of scheduled baseline runs.
+    \item[] Justification: Section~\ref{sec:experiments} and Appendix~\ref{app:throughput} list the three hardware platforms used for the throughput benchmark (Apple M2 Pro CPU, NVIDIA RTX 3090 with $24$\,GB, NVIDIA H100 with $80$\,GB). Appendix~\ref{app:compute_env} states that each baseline run used a single H100 with $512$ vectorized environments and a $10^7$-step budget, taking on the order of one to two hours of wall-clock time per run, for a total sweep of $700$ runs ($4$ algorithms $\times$ $35$ subsets $\times$ $5$ seeds, $7\times 10^9$ environment steps). The same appendix lists the pinned software environment used for the throughput measurements (Python 3.13.5, JAX 0.6.2, NumPy 2.3.1, Gymnasium 1.2.0).
     \item[] Guidelines:
     \begin{itemize}
         \item The answer \answerNA{} means that the paper does not include experiments.
@@ -124,7 +124,7 @@
 \item {\bf Code of ethics}
     \item[] Question: Does the research conducted in the paper conform, in every respect, with the NeurIPS Code of Ethics \url{https://neurips.cc/public/EthicsGuidelines}?
     \item[] Answer: \answerYes{}.
-    \item[] Justification: The work uses public benchmark datasets and reports infrastructure and baseline experiments. It does not involve human subjects, private data, or deployment of a model in a high-risk setting.
+    \item[] Justification: The work uses public, openly licensed benchmark datasets and reports infrastructure and baseline experiments. It does not involve human subjects, private data, or deployment of any model in a high-risk setting.
     \item[] Guidelines:
     \begin{itemize}
         \item The answer \answerNA{} means that the authors have not reviewed the NeurIPS Code of Ethics.
@@ -136,7 +136,7 @@
 \item {\bf Broader impacts}
     \item[] Question: Does the paper discuss both potential positive societal impacts and negative societal impacts of the work performed?
     \item[] Answer: \answerYes{}.
-    \item[] Justification: The work has positive impact as open infrastructure for more reproducible ARC RL experiments. Negative impact is limited because the paper releases an environment and baselines rather than a deployed decision system or a high-capability generative model.
+    \item[] Justification: The Discussion contains a \emph{Broader Impact and Sustainability} paragraph noting that lowering the compute requirements of large-scale ARC RL experiments broadens access to teams without dedicated CPU clusters and reduces the energy spent per rollout for the same scientific question. The work releases an environment and reproducible baselines rather than a deployed decision system or a high-capability generative model, so the direct path to negative downstream applications is limited.
     \item[] Guidelines:
     \begin{itemize}
         \item The answer \answerNA{} means that there is no societal impact of the work performed.
@@ -150,7 +150,7 @@
 \item {\bf Safeguards}
     \item[] Question: Does the paper describe safeguards that have been put in place for responsible release of data or models that have a high risk for misuse (e.g., pre-trained language models, image generators, or scraped datasets)?
     \item[] Answer: \answerNA{}.
-    \item[] Justification: The paper does not release a high-risk model, scraped dataset, or dual-use generative system requiring special access safeguards.
+    \item[] Justification: The released artifact is a deterministic simulator for an existing public benchmark and a set of small RL training scripts.
     \item[] Guidelines:
     \begin{itemize}
         \item The answer \answerNA{} means that the paper poses no such risks.
@@ -162,7 +162,7 @@
 \item {\bf Licenses for existing assets}
     \item[] Question: Are the creators or original owners of assets (e.g., code, data, models), used in the paper, properly credited and are the license and terms of use explicitly mentioned and properly respected?
     \item[] Answer: \answerYes{}.
-    \item[] Justification: The paper cites the existing datasets and software systems it uses. The experiments use ARC-AGI-1, ARC-AGI-2, MiniARC, and ConceptARC task data. The local dataset snapshots include license files: ARC-AGI-1, ARC-AGI-2, and MiniARC are distributed under Apache 2.0 licenses, and ConceptARC is distributed under an MIT license.
+    \item[] Justification: All datasets, software libraries, and prior environments used in the paper are cited at first use. The four ARC datasets are public and openly licensed: ARC-AGI-1 \citep{cholletMeasureIntelligence2019}, ARC-AGI-2 \citep{cholletARCAGI2NewChallenge2025}, and MiniARC \citep{kimPlaygroundsAbstractionReasoning2022} are distributed under the Apache 2.0 license; ConceptARC \citep{moskvichevConceptARCBenchmarkEvaluating2023} is distributed under the MIT license. The supporting libraries are similarly attributed: ARCLE \citep{leeARCLEAbstractionReasonin2024} for the comparison baseline, and Stoix \citep{toledoStoixDistributedSingleagent2024} together with Stoa \citep{toledoStoaJAXnativeInterface2025} for the training framework and environment interface. Local snapshots of every dataset retain their upstream \texttt{LICENSE} files (Appendix~\ref{app:code_and_data}), and JaxARC's downloader fetches each dataset from its official upstream repository so that license terms are respected at runtime.
     \item[] Guidelines:
     \begin{itemize}
         \item The answer \answerNA{} means that the paper does not use existing assets.
@@ -178,7 +178,7 @@
 \item {\bf New assets}
     \item[] Question: Are new assets introduced in the paper well documented and is the documentation provided alongside the assets?
     \item[] Answer: \answerYes{}.
-    \item[] Justification: JaxARC is the new software asset introduced by the paper. The manuscript documents the environment API, configuration surface, action and observation wrappers, reward profiles, and benchmark protocol, with code supplied separately for reproduction.
+    \item[] Justification: JaxARC and the baselines code are the new software assets introduced by this paper. Both are released under the MIT license at the anonymized URLs in Appendix~\ref{app:code_and_data}. The manuscript documents the environment API (Appendix~\ref{app:usage}), the internal data structures (Appendix~\ref{app:data_structures}), the reset and step semantics (Appendix~\ref{app:reset_and_step}), the similarity score (Appendix~\ref{app:similarity}), the working-grid initialization strategies (Appendix~\ref{app:grid_init}), the action and observation wrappers (Appendices~\ref{app:action_config} and~\ref{app:observation_wrappers}), the reward profiles (Appendix~\ref{app:reward_config}), the dataset registration interface (Appendix~\ref{app:extensibility}), the wrapper chain used by the baselines (Appendix~\ref{app:stoix}), and the per-algorithm hyperparameters and architecture (Appendices~\ref{app:baseline_hyperparameters} and~\ref{app:network_architecture}). The repositories include README files, example scripts, and the Hydra configurations needed to reproduce every reported experiment.
     \item[] Guidelines:
     \begin{itemize}
         \item The answer \answerNA{} means that the paper does not release new assets.
@@ -190,7 +190,7 @@
 \item {\bf Crowdsourcing and research with human subjects}
     \item[] Question: For crowdsourcing experiments and research with human subjects, does the paper include the full text of instructions given to participants and screenshots, if applicable, as well as details about compensation (if any)? 
     \item[] Answer: \answerNA{}.
-    \item[] Justification: The paper does not involve crowdsourcing experiments or new research with human subjects.
+    \item[] Justification: The paper does not involve crowdsourcing or new research with human subjects. All datasets used in the experiments are pre-existing public benchmarks; the paper does not collect any new human data.
     \item[] Guidelines:
     \begin{itemize}
         \item The answer \answerNA{} means that the paper does not involve crowdsourcing nor research with human subjects.
@@ -201,7 +201,7 @@
 \item {\bf Institutional review board (IRB) approvals or equivalent for research with human subjects}
     \item[] Question: Does the paper describe potential risks incurred by study participants, whether such risks were disclosed to the subjects, and whether Institutional Review Board (IRB) approvals (or an equivalent approval/review based on the requirements of your country or institution) were obtained?
     \item[] Answer: \answerNA{}.
-    \item[] Justification: The paper does not involve crowdsourcing experiments or new research with human subjects, so IRB approval is not applicable.
+    \item[] Justification: The paper does not involve human subjects.
     \item[] Guidelines:
     \begin{itemize}
         \item The answer \answerNA{} means that the paper does not involve crowdsourcing nor research with human subjects.
@@ -214,7 +214,7 @@
     \item[] Question: Does the paper describe the usage of LLMs if it is an important, original, or non-standard component of the core methods in this research? Note that if the LLM is used only for writing, editing, or formatting purposes and does \emph{not} impact the core methodology, scientific rigor, or originality of the research, declaration is not required.
     %this research? 
     \item[] Answer: \answerNA{}.
-    \item[] Justification: LLMs are not an original or non-standard component of the core research method, environment implementation, experiments, or scientific claims.
+    \item[] Justification: LLMs are not part of the core method/environment.
     \item[] Guidelines:
     \begin{itemize}
         \item The answer \answerNA{} means that the core method development in this research does not involve LLMs as any important, original, or non-standard components.

@@ -1,3 +1,19 @@
+\section{Code, data, and reproducibility}
+\label{app:code_and_data}
+
+\paragraph{Code.} The JaxARC environment, all action and observation wrappers, the dataset parsers, the registration and subset-loading code, and the visualization utilities are released as anonymized open-source repositories for review:
+
+\begin{itemize}
+    \item \textbf{JaxARC environment:} \url{https://anonymous.4open.science/r/JaxARC-8788}
+    \item \textbf{Baselines and experiment configurations:} \url{https://anonymous.4open.science/r/jaxarc-baselines-561F}
+\end{itemize}
+
+The baselines repository contains the Hydra configurations, the launcher used for the multi-algorithm sweep, the Stoix integration code, and the plotting scripts. Both repositories are MIT-licensed and will be de-anonymized at the camera-ready stage.
+
+\paragraph{Datasets.} All datasets used in this paper are public. ARC-AGI-1 and ARC-AGI-2 are released under the Apache 2.0 license by their respective authors \citep{cholletMeasureIntelligence2019,cholletARCAGI2NewChallenge2025}; MiniARC is released under the Apache 2.0 license \citep{kimPlaygroundsAbstractionReasoning2022}; ConceptARC is released under the MIT license \citep{moskvichevConceptARCBenchmarkEvaluating2023}. JaxARC's \texttt{auto\_download} hook fetches each dataset from its upstream repository on first use; users are not required to pre-stage any data.
+
+\paragraph{Reproducing the results.} The throughput benchmark, the multi-algorithm sweep, and the observation-wrapper diagnostic are each driven by Hydra configuration files in the baselines repository under \texttt{experiments/configs/}. The exact configuration filenames, command lines, software versions (Python 3.13.5, JAX 0.6.2, NumPy 2.3.1, Gymnasium 1.2.0), and per-run compute budgets used to produce every reported number are documented in the repositories' \texttt{README} files.
+
 \section{Environment interface and implementation}
 \label{app:environment_interface}
 
@@ -76,7 +92,7 @@ The task buffer is a single stacked PyTree of \texttt{JaxArcTask} fields, prepar
 \subsection{Reset and transition semantics}
 \label{app:reset_and_step}
 
-The compiled \texttt{reset} samples a task index from the active subset, samples a pair index uniformly from the available support or query pairs, and constructs the initial \texttt{State} via the working-grid initializer (Section~\ref{app:grid_init}). The \texttt{step} function performs four operations: (i) operation validation under the active filtering policy (Section~\ref{app:action_filter}), (ii) execution of the selected grid operation, (iii) computation of the new similarity score against the target grid, and (iv) emission of a Stoa \citep{toledoStoaJAXnativeInterface2025} \texttt{TimeStep} with one of three step types.
+The compiled \texttt{reset} samples a task index from the active subset, samples a pair index uniformly from the available support or query pairs, and constructs the initial \texttt{State} via the working-grid initializer (Section~\ref{app:grid_init}). The \texttt{step} function performs four operations: (i) operation validation against the active operation profile, (ii) execution of the selected grid operation, (iii) computation of the new similarity score against the target grid, and (iv) emission of a Stoa \citep{toledoStoaJAXnativeInterface2025} \texttt{TimeStep} with one of three step types.
 
 \begin{itemize}
     \item \texttt{TERMINATED} when the agent submits (operation $34$), regardless of whether the submission is correct.
@@ -328,11 +344,6 @@ Several operations have implicit preconditions that affect how the policy can us
     \item \textbf{Submit.} \texttt{SUBMIT} terminates the episode unconditionally. The success bonus is granted only if $s=1$ at submission time.
 \end{itemize}
 
-\subsection{Action filtering policy}
-\label{app:action_filter}
-
-When \texttt{dynamic\_action\_filtering} is enabled, every step is checked against an operation mask drawn from the current operation profile and any state-specific restrictions. Out-of-range or disallowed operation IDs are handled according to one of four policies: \texttt{clip} replaces the operation with the nearest allowed ID, \texttt{penalize} behaves identically to \texttt{clip} but is intended for combination with a reward penalty, \texttt{reject} substitutes the sentinel value $-1$ that the core treats as a no-op, and \texttt{passthrough} disables filtering. Our baselines use \texttt{clip} with the \texttt{raw} profile, so any sampled operation ID outside $\{0,\dots,9, 33, 34\}$ is mapped to the nearest legal operation before execution.
-
 \subsection{Observation channels}
 \label{app:observation_wrappers}
 
@@ -462,7 +473,7 @@ Learning-rate decay & off & off & off & off \\
 \subsection{Network architecture}
 \label{app:network_architecture}
 
-The feedforward baselines use a shallow convolutional network. The actor and critic torsos each contain two $3\times3$ convolutional layers with $32$ channels, stride $1$, SiLU activations, no layer normalization, and two fully connected layers of width $128$ before the action or value head. Inputs are arranged as $H{\times}W{\times}C$ tensors (\texttt{channel\_first}$=$\texttt{False}) so that the JaxARC observation wrappers' channel concatenation is consumed without transposition. This architecture keeps the benchmark tractable across algorithms, subsets, and seeds. Stronger architectures may change both absolute performance and algorithm ordering; the discussion in the main text frames the reported numbers as a reproducible lower bound rather than an upper limit.
+The feedforward baselines use a shallow convolutional network. The actor and critic torsos each contain two $3\times3$ convolutional layers with $32$ channels, stride $1$, SiLU activations, no layer normalization, and two fully connected layers of width $128$ before the action or value head. Inputs are arranged as $H{\times}W{\times}C$ tensors (\texttt{channel\_first}$=$\texttt{False}) so that the JaxARC observation wrappers' channel concatenation is consumed without transposition. This architecture keeps the benchmark tractable across algorithms, subsets, and seeds. Stronger architectures may change both absolute performance and algorithm ordering.
 
 \subsection{Episode metrics}
 \label{app:episode_metrics}
