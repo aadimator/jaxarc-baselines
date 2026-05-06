@@ -108,6 +108,47 @@ For the ARC-AGI-1 sweep, we adopted the task tiers defined by the ARC-Game proje
 
 The ConceptARC benchmark is organized into concept groups that isolate specific spatial or logical rules. Our main baseline figure focuses on six representative groups: AboveBelow, Center, CleanUp, CompleteShape, Copy, and Count. The full 16-group breakdown is available in Appendix~\ref{app:extended_baselines}.
 
+\subsection{Extensibility and custom subsets}
+\label{app:extensibility}
+
+JaxARC is designed for easy extension to new task families and curated subsets. The \texttt{make} function provides a unified interface for instantiating environments from predefined groups, custom YAML files, or individual tasks.
+
+\paragraph{Predefined subsets}
+To facilitate standard benchmarking, common task groupings are predefined and available immediately:
+\begin{itemize}
+    \item \textbf{ConceptARC:} All 16 concept groups are registered as subsets (e.g., \texttt{make("Concept-AboveBelow")}).
+    \item \textbf{ARC-AGI:} The standard splits are available as \texttt{make("AGI1-train")} and \texttt{make("AGI1-eval")}.
+    \item \textbf{Single Tasks:} Any individual task can be isolated by appending its ID to the dataset key (e.g., \texttt{make("Mini-l6ab0lf3...")}). This is particularly useful for debugging specific reasoning failures.
+\end{itemize}
+
+\paragraph{YAML-based subsets}
+A common pattern for creating reproducible benchmarks is to define a subset in a YAML file. These files should be placed in the project configuration directory under \texttt{configs/env/jaxarc/subsets/\{Dataset\}/\{name\}.yaml}. Once the file is saved, the subset can be instantiated using the hyphenated identifier (e.g., \texttt{make("AGI1-my\_benchmark")}). Note that library users should first call \texttt{load\_all\_subsets\_for\_dataset("AGI1")} to discover these files.
+
+\paragraph{Programmatic registration}
+Subsets can also be registered at runtime without modifying the file system. This is useful for implementing curriculum learning or dynamically generating task groups during an experiment.
+
+\begin{lstlisting}[style=jaxarcpython, caption={Programmatic subset registration and single-task instantiation.}]
+from jaxarc.registration import register_subset, make
+
+# 1. Register a custom task group
+my_tasks = ["task_id_1", "task_id_2"]
+register_subset("Mini", "custom_group", my_tasks)
+env, params = make("Mini-custom_group")
+
+# 2. Instantiate a single specific task
+env, params = make("Mini-Most_Common_color_l6ab0lf3xztbyxsu3p")
+\end{lstlisting}
+
+\paragraph{Zero-config initialization and auto-download}
+To minimize setup friction, JaxARC includes a \texttt{auto\_download} parameter in the \texttt{make} function. When set to \texttt{True}, the environment registry automatically detects if the required dataset files are missing from the local cache. If missing, it securely fetches the dataset from their official repository, and organizes the files in the appropriate local directory before proceeding with environment creation.
+
+\begin{lstlisting}[style=jaxarcpython, caption={Zero-config instantiation with automatic dataset acquisition.}]
+from jaxarc.registration import make
+
+# Automatically downloads AGI1 tasks if not present locally
+env, params = make("AGI1-entry", auto_download=True)
+\end{lstlisting}
+
 \section{Configuration surface}
 \label{app:configuration_surface}
 
