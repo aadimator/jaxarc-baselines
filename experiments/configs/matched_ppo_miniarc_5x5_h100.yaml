@@ -1,0 +1,35 @@
+experiment_name: matched_ppo_miniarc_5x5_h100
+task_root: ../JaxARC/data/MiniARC
+task_split: data/MiniARC
+task_ids:
+  - Most_Common_color_l6ab0lf3xztbyxsu3p
+
+grid_size: 5
+context_pairs: 5
+max_episode_steps: 100
+policy_architecture: spatial
+
+num_envs: 131072
+rollout_length: 4
+total_timesteps: 10485760
+eval_episodes: 300
+evaluate_after_training: false
+
+learning_rate: 0.0003
+gamma: 0.99
+gae_lambda: 0.95
+clip_epsilon: 0.2
+value_coefficient: 0.5
+entropy_coefficient: 0.01
+max_grad_norm: 0.5
+epochs: 4
+num_minibatches: 256
+
+reward:
+  step_penalty: -0.005
+  similarity_weight: 1.0
+  success_bonus: 10.0
+  failed_submit_penalty: -1.0
+
+log_interval_updates: 5
+output_dir: results/matched_ppo_miniarc_5x5_h100

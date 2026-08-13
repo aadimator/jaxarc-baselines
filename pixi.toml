@@ -34,3 +34,4 @@ LD_LIBRARY_PATH = ""
 
 [tasks]
 matched-ppo = "python -m jaxarc_baselines.matched_ppo"
+matched-ppo-miniarc-h100 = "bash scripts/run_matched_ppo_miniarc_5x5_h100.sh"
