@@ -210,3 +210,8 @@ Thumbs.db
 /paper/neurips-ed/*.out
 /paper/neurips-ed/*.synctex.gz
 /paper/neurips-ed/*.pdf
+/paper/neurips-ed/reviews/
+
+# Local editor and file-sync state
+.cursor/
+.sync.ffs_db
