@@ -1,0 +1,37 @@
+experiment_name: matched_ppo_arcagi1_30x30_h100
+task_root: ../JaxARC/data/ARC-AGI-1
+task_split: data/training
+task_ids:
+  - 3631a71a
+  - 264363fd
+  - a64e4611
+
+grid_size: 30
+context_pairs: 5
+max_episode_steps: 100
+policy_architecture: spatial
+
+num_envs: 16384
+rollout_length: 4
+total_timesteps: 1048576
+eval_episodes: 300
+evaluate_after_training: false
+
+learning_rate: 0.0003
+gamma: 0.99
+gae_lambda: 0.95
+clip_epsilon: 0.2
+value_coefficient: 0.5
+entropy_coefficient: 0.01
+max_grad_norm: 0.5
+epochs: 4
+num_minibatches: 128
+
+reward:
+  step_penalty: -0.0001
+  similarity_weight: 1.0
+  success_bonus: 10.0
+  failed_submit_penalty: -0.1
+
+log_interval_updates: 10
+output_dir: results/matched_ppo_arcagi1_30x30_h100
