@@ -485,7 +485,7 @@ def _apply_stoix_compatible_wrappers(env: Any, config: DictConfig) -> Any:
 
     env = FlattenActionWrapper(env)
     wrappers_cfg = config.env.get("observation_wrappers", {})
-    if wrappers_cfg.get("answer_grid", True):
+    if wrappers_cfg.get("answer_grid", False):
         env = AnswerObservationWrapper(env)
     if wrappers_cfg.get("input_grid", True):
         env = InputGridObservationWrapper(env)

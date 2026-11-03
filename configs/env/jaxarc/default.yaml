@@ -20,7 +20,7 @@ scenario:
 
 # Observation wrappers to apply (for multi-channel input experiments)
 observation_wrappers:
-  answer_grid: true # Add answer grid as observation channel
+  answer_grid: false # Show the answer as an observation channel
   input_grid: true # Add input grid as observation channel
   contextual: true # Add contextual information (demo pairs)
 

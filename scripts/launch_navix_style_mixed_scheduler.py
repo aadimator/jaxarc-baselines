@@ -100,7 +100,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--no-input-grid", dest="input_grid", action="store_false")
     parser.add_argument("--contextual", dest="contextual", action="store_true")
     parser.add_argument("--no-contextual", dest="contextual", action="store_false")
-    parser.set_defaults(answer_grid=True, input_grid=True, contextual=True)
+    parser.set_defaults(answer_grid=False, input_grid=True, contextual=True)
     parser.add_argument("--results-root", type=Path, default=DEFAULT_RESULTS_ROOT)
     parser.add_argument("--outputs-root", type=Path, default=DEFAULT_OUTPUTS_ROOT)
     parser.add_argument("--wandb-project", default=None)
