@@ -39,6 +39,7 @@ from jaxarc.utils.grid_utils import (
     get_actual_grid_shape_from_mask,
 )
 from jaxarc.wrappers import (
+    AllowedOperationsWrapper,
     AnswerObservationWrapper,
     BboxActionWrapper,
     ContextualObservationWrapper,
@@ -482,6 +483,10 @@ def _apply_stoix_compatible_wrappers(env: Any, config: DictConfig) -> Any:
         raise ValueError(
             f"Unsupported action mode for benchmark evaluation: {action_mode}"
         )
+
+    # Match make_jaxarc_env, so the policy picks from the same actions it trained on.
+    if action_mode != "mask" and env.params.action.allowed_operations is not None:
+        env = AllowedOperationsWrapper(env)
 
     env = FlattenActionWrapper(env)
     wrappers_cfg = config.env.get("observation_wrappers", {})
