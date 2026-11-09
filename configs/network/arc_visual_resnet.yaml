@@ -9,7 +9,7 @@ actor_network:
     downsampling_strategies: ["conv+max", "conv+max", "conv+max"]
     use_layer_norm: False
     activation: silu  # SiLU for better gradient flow
-    channel_first: True
+    channel_first: False
     hidden_sizes: [256, 256]  # Two dense layers for richer embeddings
     normalize_inputs: True
   action_head:
@@ -23,7 +23,7 @@ critic_network:
     downsampling_strategies: ["conv+max", "conv+max", "conv+max"]
     use_layer_norm: False
     activation: silu
-    channel_first: True
+    channel_first: False
     hidden_sizes: [256, 256]
     normalize_inputs: True
   critic_head:
