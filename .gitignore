@@ -215,3 +215,4 @@ Thumbs.db
 # Local editor and file-sync state
 .cursor/
 .sync.ffs_db
+.scratch
