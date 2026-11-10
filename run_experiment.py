@@ -19,6 +19,7 @@ from omegaconf import DictConfig, OmegaConf
 from stoix.utils import logger as stoix_logger_module
 
 from jaxarc_baselines.metrics import combined_custom_metrics
+from jaxarc_baselines.run_meta import apply_run_meta
 
 # Save original StoixLogger class
 _OriginalStoixLogger = stoix_logger_module.StoixLogger
@@ -85,6 +86,9 @@ def run(cfg: DictConfig) -> float:
     """
     # Allow dynamic attributes to be added to the config, matching stoix's behavior.
     OmegaConf.set_struct(cfg, False)
+
+    # Paper runs: W&B project, tags, group, job type and code provenance.
+    apply_run_meta(cfg)
 
     # Lazily import the requested system (defaults to ff_ppo)
     system = cfg.system.system_name
