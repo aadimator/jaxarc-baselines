@@ -11,6 +11,7 @@ via configuration.
 from __future__ import annotations
 
 import importlib
+from pathlib import Path
 
 import hydra
 from omegaconf import DictConfig, OmegaConf
@@ -18,6 +19,7 @@ from omegaconf import DictConfig, OmegaConf
 # 1. Import our custom metrics function and monkey-patch StoixLogger
 from stoix.utils import logger as stoix_logger_module
 
+from jaxarc_baselines.held_out import HeldOutRecorder, summarize_eval_metrics
 from jaxarc_baselines.metrics import combined_custom_metrics
 from jaxarc_baselines.run_meta import apply_run_meta
 
@@ -26,13 +28,24 @@ _OriginalStoixLogger = stoix_logger_module.StoixLogger
 
 
 class JaxARCStoixLogger(_OriginalStoixLogger):
-    """Wrapper around StoixLogger that uses our custom metrics by default."""
+    """StoixLogger with our custom metrics and per-task held-out scores."""
 
     def __init__(self, config: DictConfig, custom_metrics_fn=None) -> None:
         # Use our custom metrics function if none is provided
         if custom_metrics_fn is None:
             custom_metrics_fn = combined_custom_metrics
         super().__init__(config, custom_metrics_fn)
+        self._held_out = HeldOutRecorder(
+            Path(config.logger.base_exp_path, "held_out", config.system.system_name),
+            seed=config.arch.seed,
+            scenario=config.env.get("eval_scenario") or config.env.scenario.name,
+        )
+
+    def log(self, metrics, t, t_eval, event) -> None:
+        metrics, summary = summarize_eval_metrics(metrics)
+        if summary is not None:
+            self._held_out.record(summary, t, t_eval, event.value)
+        super().log(metrics, t, t_eval, event)
 
 
 # Monkey-patch the StoixLogger class
