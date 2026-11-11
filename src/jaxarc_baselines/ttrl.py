@@ -46,6 +46,7 @@ from jaxarc.wrappers import (
     FlattenActionWrapper,
     InputGridObservationWrapper,
     PointActionWrapper,
+    SelectionAwareFlattenWrapper,
 )
 from stoix.systems.ppo.anakin import ff_ppo
 from stoix.systems.ppo.anakin import rec_ppo
@@ -488,7 +489,10 @@ def _apply_stoix_compatible_wrappers(env: Any, config: DictConfig) -> Any:
     if action_mode != "mask" and env.params.action.allowed_operations is not None:
         env = AllowedOperationsWrapper(env)
 
-    env = FlattenActionWrapper(env)
+    if action_mode == "mask":
+        env = FlattenActionWrapper(env)
+    else:
+        env = SelectionAwareFlattenWrapper(env)
     wrappers_cfg = config.env.get("observation_wrappers", {})
     if wrappers_cfg.get("answer_grid", False):
         env = AnswerObservationWrapper(env)
