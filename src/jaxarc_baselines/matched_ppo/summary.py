@@ -112,6 +112,7 @@ def _run_row(path: Path, result: dict[str, Any]) -> dict[str, Any]:
         "seed": result["seed"],
         "backend": result["backend"],
         "policy": config.get("policy_architecture", "factorized"),
+        "precision": config.get("precision", "float32"),
         "num_envs": config["num_envs"],
         "rollout_length": config["rollout_length"],
         "update_batch_size": (

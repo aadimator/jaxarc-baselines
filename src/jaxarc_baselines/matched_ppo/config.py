@@ -10,6 +10,7 @@ import yaml
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+PRECISIONS = ("float32", "bfloat16")
 
 
 @dataclass(frozen=True)
@@ -51,6 +52,7 @@ class BenchmarkConfig:
     output_dir: Path
     reward: RewardConfig = field(default_factory=RewardConfig)
     evaluate_after_training: bool = True
+    precision: str = "float32"  # compute dtype of the shared policy
 
     @property
     def observation_channels(self) -> int:
@@ -92,6 +94,7 @@ class BenchmarkConfig:
         num_minibatches: int | None = None,
         evaluate_after_training: bool | None = None,
         output_dir: Path | None = None,
+        precision: str | None = None,
     ) -> BenchmarkConfig:
         """Apply CLI overrides without mutating the loaded config."""
         return replace(
@@ -122,6 +125,7 @@ class BenchmarkConfig:
                 else evaluate_after_training
             ),
             output_dir=self.output_dir if output_dir is None else output_dir,
+            precision=self.precision if precision is None else precision,
         )
 
     def validate(self) -> None:
@@ -134,6 +138,8 @@ class BenchmarkConfig:
             raise ValueError(
                 "policy_architecture must be 'factorized' or 'spatial'"
             )
+        if self.precision not in PRECISIONS:
+            raise ValueError(f"precision must be one of {PRECISIONS}")
         if self.observation_channels != 13:
             raise ValueError(
                 "The matched PPO benchmark requires 13 channels. Set context_pairs to 5."

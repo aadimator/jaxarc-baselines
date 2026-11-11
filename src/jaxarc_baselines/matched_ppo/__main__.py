@@ -28,6 +28,7 @@ def _add_config_arguments(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument("--num-minibatches", type=int)
     parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--precision", choices=("float32", "bfloat16"))
 
 
 def _resolved_config(args: argparse.Namespace):
@@ -42,6 +43,7 @@ def _resolved_config(args: argparse.Namespace):
             False if getattr(args, "skip_evaluation", False) else None
         ),
         output_dir=args.output_dir,
+        precision=args.precision,
     )
 
 

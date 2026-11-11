@@ -618,7 +618,7 @@ def run_training(
     setup_started = time.perf_counter()
     tasks: TaskBundle = load_task_bundle(config)
     backend = make_backend(backend_name, config, tasks)
-    model = make_model(config.policy_architecture, config.grid_size)
+    model = make_model(config.policy_architecture, config.grid_size, config.precision)
     initialization_key, training_key = jax.random.split(
         jax.random.PRNGKey(seed)
     )
@@ -720,6 +720,7 @@ def run_training(
         "policy": {
             "architecture": policy_description(model),
             "architecture_key": config.policy_architecture,
+            "precision": config.precision,
             "parameter_count": _parameter_count(train_state.params),
             "action_space": (
                 "joint color-cell categorical plus submit"
@@ -764,7 +765,7 @@ def evaluate_checkpoint(
     config.validate()
     tasks = load_task_bundle(config)
     backend = make_backend(backend_name, config, tasks)
-    model = make_model(config.policy_architecture, config.grid_size)
+    model = make_model(config.policy_architecture, config.grid_size, config.precision)
     template = create_train_state(
         model,
         config,

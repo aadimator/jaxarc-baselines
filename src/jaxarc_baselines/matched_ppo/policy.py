@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import partial
 from typing import NamedTuple
 
 import flax.linen as nn
@@ -36,23 +37,27 @@ class ActorCritic(nn.Module):
 
     grid_size: int
     hidden_size: int = 128
+    dtype: jnp.dtype = jnp.float32  # compute dtype; params stay float32
 
     @nn.compact
     def __call__(self, observation: jax.Array) -> PolicyOutput:
-        x = (observation.astype(jnp.float32) + 1.0) / 10.0
+        x = ((observation.astype(jnp.float32) + 1.0) / 10.0).astype(self.dtype)
+        dense = partial(nn.Dense, dtype=self.dtype)
+        conv = partial(nn.Conv, dtype=self.dtype)
         x = nn.relu(
-            nn.Conv(features=32, kernel_size=(3, 3), strides=(2, 2))(x)
+            conv(features=32, kernel_size=(3, 3), strides=(2, 2))(x)
         )
         x = nn.relu(
-            nn.Conv(features=32, kernel_size=(3, 3), strides=(2, 2))(x)
+            conv(features=32, kernel_size=(3, 3), strides=(2, 2))(x)
         )
         x = x.reshape((x.shape[0], -1))
-        x = nn.relu(nn.Dense(self.hidden_size)(x))
+        x = nn.relu(dense(self.hidden_size)(x))
+        f32 = lambda y: y.astype(jnp.float32)
         return PolicyOutput(
-            operation_logits=nn.Dense(NUM_COMMON_OPERATIONS)(x),
-            row_logits=nn.Dense(self.grid_size)(x),
-            col_logits=nn.Dense(self.grid_size)(x),
-            value=nn.Dense(1)(x).squeeze(-1),
+            operation_logits=f32(dense(NUM_COMMON_OPERATIONS)(x)),
+            row_logits=f32(dense(self.grid_size)(x)),
+            col_logits=f32(dense(self.grid_size)(x)),
+            value=f32(dense(1)(x).squeeze(-1)),
         )
 
 
@@ -61,34 +66,42 @@ class SpatialActorCritic(nn.Module):
 
     grid_size: int
     hidden_size: int = 128
+    dtype: jnp.dtype = jnp.float32  # compute dtype; params stay float32
 
     @nn.compact
     def __call__(self, observation: jax.Array) -> SpatialPolicyOutput:
-        x = (observation.astype(jnp.float32) + 1.0) / 10.0
-        x = nn.relu(nn.Conv(features=32, kernel_size=(3, 3))(x))
-        x = nn.relu(nn.Conv(features=32, kernel_size=(3, 3))(x))
-        edit_logits = nn.Conv(features=10, kernel_size=(1, 1))(x)
+        x = ((observation.astype(jnp.float32) + 1.0) / 10.0).astype(self.dtype)
+        dense = partial(nn.Dense, dtype=self.dtype)
+        conv = partial(nn.Conv, dtype=self.dtype)
+        x = nn.relu(conv(features=32, kernel_size=(3, 3))(x))
+        x = nn.relu(conv(features=32, kernel_size=(3, 3))(x))
+        edit_logits = conv(features=10, kernel_size=(1, 1))(x)
         pooled = jnp.mean(x, axis=(1, 2))
-        value_features = nn.relu(nn.Dense(self.hidden_size)(pooled))
-        submit_logit = nn.Dense(1)(value_features)
+        value_features = nn.relu(dense(self.hidden_size)(pooled))
+        submit_logit = dense(1)(value_features)
         return SpatialPolicyOutput(
             action_logits=jnp.concatenate(
                 [edit_logits.reshape((x.shape[0], -1)), submit_logit],
                 axis=-1,
-            ),
-            value=nn.Dense(1)(value_features).squeeze(-1),
+            ).astype(jnp.float32),
+            value=dense(1)(value_features).squeeze(-1).astype(jnp.float32),
         )
 
 
 PolicyModel = ActorCritic | SpatialActorCritic
 
 
-def make_model(architecture: str, grid_size: int) -> PolicyModel:
+def make_model(
+    architecture: str, grid_size: int, precision: str = "float32"
+) -> PolicyModel:
     """Build one of the controlled policy architectures."""
+    dtypes = {"float32": jnp.float32, "bfloat16": jnp.bfloat16}
+    if precision not in dtypes:
+        raise ValueError(f"Unknown precision: {precision}")
     if architecture == "factorized":
-        return ActorCritic(grid_size=grid_size)
+        return ActorCritic(grid_size=grid_size, dtype=dtypes[precision])
     if architecture == "spatial":
-        return SpatialActorCritic(grid_size=grid_size)
+        return SpatialActorCritic(grid_size=grid_size, dtype=dtypes[precision])
     raise ValueError(f"Unknown policy architecture: {architecture}")
 
 
