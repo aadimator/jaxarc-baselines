@@ -96,6 +96,7 @@ def test_extra_tags_are_appended():
         {"stage": "smoke", "track": "X"},
         {"stage": "smoke", "question": "Q9"},
         {"stage": "final", "track": "E", "question": "Q2"},  # no campaign_id
+        {"stage": "ablation", "track": "E", "campaign_id": "c"},  # no question
     ],
 )
 def test_invalid_run_meta_is_rejected(meta):
@@ -106,7 +107,17 @@ def test_invalid_run_meta_is_rejected(meta):
         run_meta.apply_run_meta(cfg)
 
 
-@pytest.mark.parametrize("stage", ["tune-l1", "final", "scale"])
+def test_ablation_is_a_recorded_stage():
+    cfg = base_cfg(stage="ablation", track="E", question="Q2", campaign_id="E-net-ablation-mini")
+
+    run_meta.apply_run_meta(cfg)
+
+    assert list(cfg.logger.loggers.wandb.tag)[:3] == ["ablation", "E", "Q2"]
+    assert list(cfg.logger.loggers.wandb.group_tag) == ["E-net-ablation-mini"]
+    assert os.environ["WANDB_JOB_TYPE"] == "ablation"
+
+
+@pytest.mark.parametrize("stage", ["tune-l1", "final", "scale", "ablation"])
 def test_dirty_tree_blocks_recorded_runs(monkeypatch, stage):
     dirty = {k: dict(v) for k, v in CLEAN.items()}
     dirty["jaxarc"]["dirty"] = True
