@@ -4,9 +4,9 @@ A config opts in with a ``run_meta`` block; configs without one are left alone.
 
     run_meta:
       stage: tune-l1        # required, one of STAGES
-      track: E              # E | G | M (required for tune-*, final, scale)
-      question: Q2          # Q1..Q5 (required for tune-*, final, scale)
-      campaign_id: E-ppo-mini   # W&B group (required for tune-*, final, scale)
+      track: E              # E | G | M (required for recorded stages)
+      question: Q2          # Q1..Q5 (required for recorded stages)
+      campaign_id: E-ppo-mini   # W&B group (required for recorded stages)
       config_id: c07        # optional, the sampled configuration
       tags: []              # optional extra tags
       allow_dirty: false    # let a recorded stage run from uncommitted code
@@ -37,8 +37,11 @@ STAGES = (
     "tune-l2-s2",
     "final",
     "scale",
+    "ablation",  # design checks that fix the shared agent before tuning
 )
-RECORDED = tuple(s for s in STAGES if s.startswith("tune") or s in ("final", "scale"))
+RECORDED = tuple(
+    s for s in STAGES if s.startswith("tune") or s in ("final", "scale", "ablation")
+)
 TRACKS = ("E", "G", "M")
 QUESTIONS = ("Q1", "Q2", "Q3", "Q4", "Q5")
 
