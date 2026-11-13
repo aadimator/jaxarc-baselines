@@ -1,0 +1,25 @@
+# Spatial agent, separate actor and critic torsos (stock Stoix ff_ppo).
+# One torso config feeds both, so `network.torso.<key>=...` switches both.
+# The action head matches JaxARC's flat point actions; it needs env.action.mode=point.
+
+torso:
+  _target_: jaxarc_baselines.spatial_network.SpatialTorso
+  channels: 64
+  num_blocks: 2
+  global_every: 1 # pool-and-broadcast after every this many residual blocks
+  colour_input: embed # embed | raw
+  embed_dim: 8
+  dtype: bfloat16 # bfloat16 | float32 (compute only; params, logits and value stay float32)
+
+actor_network:
+  pre_torso: ${network.torso}
+  action_head:
+    _target_: jaxarc_baselines.spatial_network.SpatialPolicyHead
+    allowed_operations: ${action.allowed_operations}
+    hidden_size: 64
+
+critic_network:
+  pre_torso: ${network.torso}
+  critic_head:
+    _target_: jaxarc_baselines.spatial_network.SpatialValueHead
+    hidden_size: 64

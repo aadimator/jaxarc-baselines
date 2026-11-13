@@ -1,0 +1,25 @@
+# Spatial agent, one torso shared by the policy and value heads.
+# Use with system=ppo/ff_ppo_shared. Same torso settings as arc_spatial.
+
+torso:
+  _target_: jaxarc_baselines.spatial_network.SpatialTorso
+  channels: 64
+  num_blocks: 2
+  global_every: 1 # pool-and-broadcast after every this many residual blocks
+  colour_input: embed # embed | raw
+  embed_dim: 8
+  dtype: bfloat16 # bfloat16 | float32 (compute only; params, logits and value stay float32)
+
+shared_network:
+  pre_torso: ${network.torso}
+
+actor_network:
+  action_head:
+    _target_: jaxarc_baselines.spatial_network.SpatialPolicyHead
+    allowed_operations: ${action.allowed_operations}
+    hidden_size: 64
+
+critic_network:
+  critic_head:
+    _target_: jaxarc_baselines.spatial_network.SpatialValueHead
+    hidden_size: 64

@@ -1,0 +1,23 @@
+# --- FF-PPO with one torso shared by the policy and value heads ---
+# Same settings as Stoix's ppo/ff_ppo, with one learning rate for the one optimizer.
+# Loss = policy loss + vf_coef * value loss - ent_coef * entropy.
+# Needs a network config with `shared_network` (e.g. network=arc_spatial_shared).
+
+system_name: ff_ppo_shared # Name of the system.
+
+# --- RL hyperparameters ---
+lr: 3e-4 # Learning rate for the shared network
+rollout_length: 128 # Number of environment steps per vectorised environment
+epochs: 4 # Number of ppo epochs per training data batch.
+num_minibatches: 16 # Number of minibatches per ppo epoch
+gamma: 0.99 # Discounting factor.
+gae_lambda: 0.95 # Lambda value for GAE computation.
+clip_eps: 0.2 # Clipping value for PPO updates and value function
+ent_coef: 0.01 # Entropy regularisation term for loss function
+vf_coef: 0.5 # Value loss weight; with a shared torso it also sets how much the value loss shapes the torso
+max_grad_norm: 0.5 # Maximum norm of the gradients for a weight update.
+decay_learning_rates: True # Whether learning rates should be linearly decayed during training.
+reward_scale: 1.0 # Scale factor for rewards, useful for environments with large reward magnitudes.
+standardize_advantages: True # Whether to standardize the advantages.
+normalize_observations: False # Whether to normalize observations using running statistics.
+obs_norm_warmup_steps: 128 # If normalising observations, number of warmup steps to collect observations for initial statistics = total_num_envs * obs_norm_warmup_steps.

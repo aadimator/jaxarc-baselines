@@ -1,0 +1,18 @@
+# Spatial agent for PQN (and DQN): the shared torso with one Q-value per flat
+# point action, in the same layout as the policy head's logits.
+
+torso:
+  _target_: jaxarc_baselines.spatial_network.SpatialTorso
+  channels: 64
+  num_blocks: 2
+  global_every: 1 # pool-and-broadcast after every this many residual blocks
+  colour_input: embed # embed | raw
+  embed_dim: 8
+  dtype: bfloat16 # bfloat16 | float32 (compute only; params and Q-values stay float32)
+
+actor_network:
+  pre_torso: ${network.torso}
+  action_head:
+    _target_: jaxarc_baselines.spatial_network.SpatialQHead
+    allowed_operations: ${action.allowed_operations}
+    hidden_size: 64

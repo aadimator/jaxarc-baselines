@@ -1,0 +1,9 @@
+# Potential-based shaping (Ng et al. 1999): similarity_weight * (gamma * sim' - sim).
+# No step cost and no wrong-submit penalty. The shaping gamma is the agent's
+# discount, so set system.gamma only.
+shaping: potential
+gamma: ${system.gamma}
+step_penalty: 0.0
+success_bonus: 10.0
+unsolved_submission_penalty: 0.0
+similarity_weight: 1.0

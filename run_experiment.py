@@ -68,6 +68,7 @@ RUNNER_MODULES = {
     "ff_dpo_continuous": "stoix.systems.ppo.anakin.ff_dpo_continuous",
     "ff_dqn": "stoix.systems.q_learning.ff_dqn",
     "ff_ppo": "stoix.systems.ppo.anakin.ff_ppo",
+    "ff_ppo_shared": "jaxarc_baselines.shared_ppo",
     "ff_pqn": "stoix.systems.q_learning.ff_pqn",
     "ff_reinforce": "stoix.systems.vpg.ff_reinforce",
     "ppo": "stoix.systems.ppo.anakin.ff_ppo",
