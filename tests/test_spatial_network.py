@@ -18,6 +18,7 @@ import jaxarc
 from jaxarc import JaxArcConfig
 from jaxarc.envs.grid_operations import SELECTION_INDEPENDENT_OPERATIONS
 from jaxarc.registration import available_task_ids
+from jaxarc.types import ARCOperationType
 from jaxarc.stoix_adapter import make_jaxarc_env
 from jaxarc_baselines.spatial_network import (
     PADDING_CATEGORY,
@@ -481,3 +482,72 @@ def test_value_head_starts_near_zero_for_every_seed():
     ]
 
     assert float(jnp.abs(jnp.stack(values)).max()) < 0.05
+
+
+# --- Init options for the never-submit collapse (strategy-v4 §10d) ------------
+
+
+def submit_index(profile, size):
+    allowed = PROFILES[profile]
+    dependent = [op for op in allowed if op not in SELECTION_INDEPENDENT_OPERATIONS]
+    independent = [op for op in allowed if op in SELECTION_INDEPENDENT_OPERATIONS]
+    return len(dependent) * size * size + independent.index(ARCOperationType.SUBMIT)
+
+
+def test_value_bias_init_sets_the_starting_value_for_every_seed():
+    obs = observation(5, batch=16)
+    critic = FeedForwardCritic(
+        torso=SpatialTorso(channels=16, num_blocks=1),
+        critic_head=SpatialValueHead(bias_init=-1.0),
+    )
+    values = jnp.stack(
+        [critic.apply(critic.init(jax.random.PRNGKey(seed), obs), obs) for seed in range(8)]
+    )
+
+    assert float(jnp.abs(values + 1.0).max()) < 0.05
+
+
+@pytest.mark.parametrize("profile", ["raw", "full"])
+def test_submit_bias_shifts_only_the_submit_logit_at_init(profile):
+    features = jax.random.normal(jax.random.PRNGKey(3), (2, 5, 5, 16))
+    action_dim = action_count(profile, 5)
+    plain = SpatialPolicyHead(action_dim=action_dim, allowed_operations=PROFILES[profile])
+    biased = SpatialPolicyHead(
+        action_dim=action_dim, allowed_operations=PROFILES[profile], submit_bias=1.0
+    )
+    key = jax.random.PRNGKey(0)
+    diff = (
+        biased.apply(biased.init(key, features), features).logits
+        - plain.apply(plain.init(key, features), features).logits
+    )
+    expected = np.zeros(action_dim, dtype=np.float32)
+    expected[submit_index(profile, 5)] = 1.0
+
+    np.testing.assert_allclose(diff, np.broadcast_to(expected, diff.shape), atol=1e-6)
+
+
+def test_submit_bias_without_submit_is_rejected():
+    allowed = [op for op in PROFILES["raw"] if op != ARCOperationType.SUBMIT]
+    independent = [op for op in allowed if op in SELECTION_INDEPENDENT_OPERATIONS]
+    head = SpatialPolicyHead(
+        action_dim=(len(allowed) - len(independent)) * 25 + len(independent),
+        allowed_operations=allowed,
+        submit_bias=1.0,
+    )
+    with pytest.raises(ValueError, match="Submit"):
+        head.init(jax.random.PRNGKey(0), jnp.zeros((1, 5, 5, 8)))
+
+
+@pytest.mark.parametrize("name", ["arc_spatial", "arc_spatial_shared"])
+def test_init_options_default_to_off_and_reach_the_heads(name):
+    config = network_config(name)
+    assert config.actor_network.action_head.submit_bias == 0.0
+    assert config.critic_network.critic_head.bias_init == 0.0
+
+    config.actor_network.action_head.submit_bias = 1.0
+    config.critic_network.critic_head.bias_init = -1.0
+    head = hydra.utils.instantiate(config.actor_network.action_head, action_dim=276)
+    critic_head = hydra.utils.instantiate(config.critic_network.critic_head)
+
+    assert head.submit_bias == 1.0
+    assert critic_head.bias_init == -1.0
