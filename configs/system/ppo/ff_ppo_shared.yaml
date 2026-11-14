@@ -17,6 +17,7 @@ ent_coef: 0.01 # Entropy regularisation term for loss function
 vf_coef: 0.5 # Value loss weight; with a shared torso it also sets how much the value loss shapes the torso
 max_grad_norm: 0.5 # Maximum norm of the gradients for a weight update.
 decay_learning_rates: True # Whether learning rates should be linearly decayed during training.
+lr_schedule_timesteps: null # Steps the lr decay spans; null = this run's. Tuning stage 1 sets the final budget and stops at half
 reward_scale: 1.0 # Scale factor for rewards, useful for environments with large reward magnitudes.
 standardize_advantages: True # Whether to standardize the advantages.
 normalize_observations: False # Whether to normalize observations using running statistics.

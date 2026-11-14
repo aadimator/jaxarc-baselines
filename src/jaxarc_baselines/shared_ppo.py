@@ -46,7 +46,7 @@ from stoix.utils.running_statistics import (
     update_statistics,
 )
 from stoix.utils.total_timestep_checker import check_total_timesteps
-from stoix.utils.training import make_learning_rate
+from stoix.utils.training import make_learning_rate_schedule
 
 
 def shared_ppo_loss(
@@ -327,6 +327,42 @@ def get_learner_fn(
     return learner_fn
 
 
+def schedule_updates(config: DictConfig) -> int:
+    """Updates the linear lr decay spans: the run's own, or ``system.lr_schedule_timesteps``.
+
+    A horizon longer than the run lets stage 1 of the tuning search run the final
+    budget's schedule and stop early, so a stage-1 run is the start of a full run.
+    """
+    horizon = config.system.get("lr_schedule_timesteps")
+    if horizon is None:
+        return int(config.arch.num_updates)
+    per_update = (
+        config.num_devices
+        * config.system.rollout_length
+        * config.arch.update_batch_size
+        * config.arch.num_envs
+    )
+    updates = int(horizon) // per_update
+    if updates < config.arch.num_updates:
+        raise ValueError(
+            f"system.lr_schedule_timesteps={horizon} gives {updates} updates, fewer than the "
+            f"run's {config.arch.num_updates}; the lr would go negative"
+        )
+    return updates
+
+
+def make_lr(config: DictConfig):
+    """The optimizer's learning rate: constant, or linear decay over ``schedule_updates``."""
+    if not config.system.decay_learning_rates:
+        return config.system.lr
+    return make_learning_rate_schedule(
+        config.system.lr,
+        schedule_updates(config),
+        config.system.epochs,
+        config.system.num_minibatches,
+    )
+
+
 def _collect_obs_norm_rollouts(
     env: Environment,
     key: chex.PRNGKey,
@@ -400,9 +436,7 @@ def learner_setup(
         torso=torso, action_head=action_head, critic_head=critic_head
     )
 
-    lr = make_learning_rate(
-        config.system.lr, config, config.system.epochs, config.system.num_minibatches
-    )
+    lr = make_lr(config)
     optim = optax.chain(
         optax.clip_by_global_norm(config.system.max_grad_norm),
         optax.adam(lr, eps=1e-5),
