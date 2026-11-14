@@ -3,11 +3,11 @@
 A config opts in with a ``run_meta`` block; configs without one are left alone.
 
     run_meta:
-      stage: tune-l1        # required, one of STAGES
+      stage: tune-s1        # required, one of STAGES
       track: E              # E | G | M (required for recorded stages)
       question: Q2          # Q1..Q5 (required for recorded stages)
       campaign_id: E-ppo-mini   # W&B group (required for recorded stages)
-      config_id: c07        # optional, the sampled configuration
+      config_id: c07        # optional, the sampled configuration (added as a tag)
       tags: []              # optional extra tags
       allow_dirty: false    # let a recorded stage run from uncommitted code
 
@@ -31,11 +31,9 @@ PROJECT = "jaxarc-tmlr"
 STAGES = (
     "smoke",
     "throughput",
-    "tune-l1",
-    "tune-l1-s2",
-    "tune-l2",
-    "tune-l2-s2",
-    "final",
+    "tune-s1",  # tuning stage 1: random search, final schedule stopped at B/2 (strategy-v4 §11c)
+    "tune-s2",  # tuning stage 2: the stage-1 top configs (and audit configs) at the full budget
+    "final",  # the frozen config on fresh seeds
     "scale",
     "ablation",  # design checks that fix the shared agent before tuning
 )
@@ -105,7 +103,7 @@ def apply_run_meta(cfg: DictConfig) -> None:
     meta.code_state = "dirty" if dirty else "clean"
 
     tags = [meta.stage, meta.get("track"), meta.get("question")]
-    tags += [cfg.system.system_name, cfg.env.scenario.name, *meta.get("tags", [])]
+    tags += [cfg.system.system_name, cfg.env.scenario.name, meta.get("config_id"), *meta.get("tags", [])]
     wandb = cfg.logger.loggers.wandb
     wandb.project = PROJECT
     wandb.tag = [str(t) for t in tags if t]
