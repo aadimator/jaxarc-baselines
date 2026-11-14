@@ -14,7 +14,7 @@ from omegaconf import OmegaConf
 from jaxarc import JaxArcConfig
 from jaxarc.registration import available_task_ids
 from jaxarc.registration.subset_loader import load_all_subsets_for_dataset
-from jaxarc_baselines.shared_ppo import learner_setup, shared_ppo_loss
+from jaxarc_baselines.shared_ppo import learner_setup, schedule_updates, shared_ppo_loss
 from jaxarc_baselines.spatial_network import (
     SpatialPolicyHead,
     SpatialTorso,
@@ -170,3 +170,50 @@ def test_run_experiment_registers_the_shared_system():
     )
 
     assert callable(importlib.import_module(runners["ff_ppo_shared"]).run_experiment)
+
+
+def schedule_config(total, horizon=None):
+    config = compose_config(
+        f"arch.total_timesteps={total}", "arch.total_num_envs=8", "arch.num_evaluation=2"
+    )
+    config.num_devices = 1
+    if horizon is not None:
+        config.system.lr_schedule_timesteps = horizon
+    from stoix.utils.total_timestep_checker import check_total_timesteps
+
+    return check_total_timesteps(config)
+
+
+def test_lr_schedule_spans_the_run_by_default():
+    config = schedule_config(total=8 * 128 * 20)
+
+    assert config.system.lr_schedule_timesteps is None
+    assert schedule_updates(config) == config.arch.num_updates == 20
+
+
+def test_lr_schedule_horizon_can_outlast_the_run():
+    # Stage 1 of the tuning protocol: the final budget's schedule, stopped halfway.
+    config = schedule_config(total=8 * 128 * 20, horizon=8 * 128 * 40)
+
+    assert config.arch.num_updates == 20
+    assert schedule_updates(config) == 40
+
+
+def test_lr_schedule_horizon_shorter_than_the_run_is_rejected():
+    config = schedule_config(total=8 * 128 * 20, horizon=8 * 128 * 10)
+
+    with pytest.raises(ValueError, match="lr_schedule_timesteps"):
+        schedule_updates(config)
+
+
+def test_learner_lr_follows_the_horizon():
+    from jaxarc_baselines.shared_ppo import make_lr
+
+    config = schedule_config(total=8 * 128 * 20, horizon=8 * 128 * 40)
+    config.system.lr = 1e-3
+    lr = make_lr(config)
+    per_update = config.system.epochs * config.system.num_minibatches
+
+    # Halfway through the run is a quarter of the way through the schedule.
+    assert lr(10 * per_update) == pytest.approx(1e-3 * (1 - 10 / 40))
+    assert lr(20 * per_update) == pytest.approx(5e-4)
