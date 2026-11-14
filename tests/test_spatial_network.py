@@ -538,11 +538,18 @@ def test_submit_bias_without_submit_is_rejected():
         head.init(jax.random.PRNGKey(0), jnp.zeros((1, 5, 5, 8)))
 
 
-@pytest.mark.parametrize("name", ["arc_spatial", "arc_spatial_shared"])
-def test_init_options_default_to_off_and_reach_the_heads(name):
+@pytest.mark.parametrize(
+    ("name", "submit_bias", "bias_init"),
+    [
+        ("arc_spatial", 0.0, 0.0),
+        # Shared torso ships with both on: it stopped the never-submit collapse.
+        ("arc_spatial_shared", 1.0, -0.5),
+    ],
+)
+def test_init_options_have_their_defaults_and_reach_the_heads(name, submit_bias, bias_init):
     config = network_config(name)
-    assert config.actor_network.action_head.submit_bias == 0.0
-    assert config.critic_network.critic_head.bias_init == 0.0
+    assert config.actor_network.action_head.submit_bias == submit_bias
+    assert config.critic_network.critic_head.bias_init == bias_init
 
     config.actor_network.action_head.submit_bias = 1.0
     config.critic_network.critic_head.bias_init = -1.0
