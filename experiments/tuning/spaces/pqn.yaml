@@ -1,0 +1,18 @@
+# Search space for PQN (Stoix ff_pqn). strategy-v4 §11c.
+# Fixed at Stoix defaults otherwise: MSE loss, max_grad_norm 0.5, no lr decay.
+name: pqn
+# Stage 1 stops at B/2; epsilon then decays over the same absolute steps as in a
+# full run, so the stage-1 exploration_fraction is doubled (it must stay <= 1).
+schedule: epsilon_fraction
+knobs:
+  q_lr: {path: system.q_lr, dist: log_uniform, low: 1.0e-4, high: 3.0e-3}
+  training_epsilon: {path: system.training_epsilon, dist: log_uniform, low: 0.01, high: 0.2}
+  exploration_fraction: {path: system.exploration_fraction, dist: uniform, low: 0.1, high: 0.5}
+  q_lambda: {path: system.q_lambda, dist: uniform, low: 0.5, high: 0.95}
+  rollout_length: {path: system.rollout_length, dist: choice, values: [8, 16, 32]}
+  update:
+    dist: choice
+    values:
+      - {system.epochs: 1, system.num_minibatches: 8}
+      - {system.epochs: 2, system.num_minibatches: 16}
+      - {system.epochs: 4, system.num_minibatches: 16}

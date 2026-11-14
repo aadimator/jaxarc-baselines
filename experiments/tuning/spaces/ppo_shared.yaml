@@ -1,0 +1,19 @@
+# Search space for PPO with the shared torso (system=ppo/ff_ppo_shared).
+# strategy-v4 §11c. Published with the paper; sampled by jaxarc_baselines.tuning.
+# Floats are rounded to 3 significant figures after sampling.
+name: ppo_shared
+# Stage 1 keeps the final budget's lr decay and stops at B/2 (system.lr_schedule_timesteps).
+schedule: lr_horizon
+knobs:
+  lr: {path: system.lr, dist: log_uniform, low: 1.0e-4, high: 3.0e-3}
+  ent_coef: {path: system.ent_coef, dist: log_uniform, low: 1.0e-3, high: 3.0e-2}
+  vf_coef: {path: system.vf_coef, dist: log_uniform, low: 0.1, high: 2.0}
+  clip_eps: {path: system.clip_eps, dist: uniform, low: 0.1, high: 0.3}
+  gae_lambda: {path: system.gae_lambda, dist: uniform, low: 0.8, high: 0.99}
+  update:  # one joint knob: epochs and minibatches per rollout
+    dist: choice
+    values:
+      - {system.epochs: 2, system.num_minibatches: 8}
+      - {system.epochs: 4, system.num_minibatches: 8}
+      - {system.epochs: 4, system.num_minibatches: 16}
+      - {system.epochs: 8, system.num_minibatches: 16}

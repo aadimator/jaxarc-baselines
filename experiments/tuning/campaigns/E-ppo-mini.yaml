@@ -1,0 +1,26 @@
+# Track E, PPO (shared torso), MiniARC 5x5. strategy-v4 §11c.
+campaign_id: E-ppo-mini
+track: E
+question: Q2
+space: ppo_shared
+config_name: default_ppo_jaxarc
+budget: 200000000          # B; provisional until the MiniARC budget check (§11c)
+num_evaluation: 20         # evals over B; stage 1 gets the first half of them
+sample_seed: 20261114
+stage1: {configs: 32, seeds: {first: 1, count: 3}, fraction: 0.5}
+stage2: {top_k: 4, seeds: {first: 101, count: 5}}
+final: {seeds: {first: 1001, count: 20}}
+dev_scenario: Mini-split_dev
+test_scenario: Mini-split_test
+fixed:
+  - system=ppo/ff_ppo_shared
+  - network=arc_spatial_shared
+  - reward=pbrs
+  - dataset=mini_arc
+  - env.scenario.name=Mini-split_train
+  - env.scenario.task_name=mini_split_train
+  - "+env.eval_reset_fn={_target_:jaxarc.evaluation.make_eval_reset_fn}"
+  - env.observation_wrappers.answer_grid=true
+  - arch.total_num_envs=2048
+  - arch.num_eval_episodes=960
+  - arch.absolute_metric=false
