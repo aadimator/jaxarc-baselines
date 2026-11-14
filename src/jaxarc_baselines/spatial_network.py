@@ -15,9 +15,10 @@ import distrax
 import jax
 import jax.numpy as jnp
 from flax import linen as nn
-from flax.linen.initializers import Initializer, orthogonal
+from flax.linen.initializers import Initializer, constant, orthogonal
 from jaxarc.constants import NUM_OPERATIONS
 from jaxarc.envs.grid_operations import SELECTION_INDEPENDENT_OPERATIONS
+from jaxarc.types import ARCOperationType
 from tensorflow_probability.substrates.jax.distributions import Categorical
 
 NUM_COLOURS = 10
@@ -139,6 +140,7 @@ class SpatialActionScores(nn.Module):
     num_global_ops: int
     hidden_size: int
     kernel_init: Initializer
+    global_bias: tuple[float, ...] | None = None  # starting bias per global op
 
     @nn.compact
     def __call__(self, features: jax.Array) -> jax.Array:
@@ -160,16 +162,20 @@ class SpatialActionScores(nn.Module):
                 global_pool(features)
             )
         )
+        bias = self.global_bias or (0.0,) * self.num_global_ops
         global_scores = nn.Dense(
             self.num_global_ops,
             kernel_init=self.kernel_init,
+            bias_init=lambda key, shape, dtype=jnp.float32: jnp.asarray(bias, dtype),
             dtype=dtype,
             name="global_out",
         )(hidden)
         return jnp.concatenate([cell, global_scores], axis=-1)
 
 
-def _action_scores(head, features: jax.Array, kernel_init: Initializer) -> jax.Array:
+def _action_scores(
+    head, features: jax.Array, kernel_init: Initializer, submit_bias: float = 0.0
+) -> jax.Array:
     dependent, independent = split_operations(head.allowed_operations)
     height, width = features.shape[-3:-1]
     expected = len(dependent) * height * width + len(independent)
@@ -180,22 +186,42 @@ def _action_scores(head, features: jax.Array, kernel_init: Initializer) -> jax.A
             f"but the env has {head.action_dim}. It needs point actions and the env's "
             "allowed_operations."
         )
+    global_bias = None
+    if submit_bias:
+        if ARCOperationType.SUBMIT not in independent:
+            raise ValueError("submit_bias needs Submit among the allowed operations")
+        global_bias = tuple(
+            submit_bias if op == ARCOperationType.SUBMIT else 0.0 for op in independent
+        )
     return SpatialActionScores(
-        len(dependent), len(independent), head.hidden_size, kernel_init, name="scores"
+        len(dependent),
+        len(independent),
+        head.hidden_size,
+        kernel_init,
+        global_bias,
+        name="scores",
     )(features)
 
 
 class SpatialPolicyHead(nn.Module):
-    """One categorical over every flat point action; computed in float32."""
+    """One categorical over every flat point action; computed in float32.
+
+    ``submit_bias`` is the Submit logit's starting bias (0 by default). The other
+    logits start near 0, so +1 raises the initial per-step Submit probability
+    about e-fold.
+    """
 
     action_dim: int
     allowed_operations: Sequence[int] | None = None
     hidden_size: int = 64
     kernel_init: Initializer = orthogonal(0.01)
+    submit_bias: float = 0.0
 
     @nn.compact
     def __call__(self, features: jax.Array) -> Categorical:
-        return Categorical(logits=_action_scores(self, features, self.kernel_init))
+        return Categorical(
+            logits=_action_scores(self, features, self.kernel_init, self.submit_bias)
+        )
 
 
 class SpatialQHead(nn.Module):
@@ -224,13 +250,20 @@ class SpatialValueHead(nn.Module):
     With orthogonal(1.0) the initial value varied by about +-0.5 across seeds.
     Under pbrs a wrong submit pays minus the current similarity, so a seed with
     an optimistic critic punished early submits and PPO stopped submitting.
+
+    ``bias_init`` is the output's starting value. Near 0 is still optimistic under
+    pbrs, where a policy that rarely solves is worth about minus the similarity;
+    -1 starts the critic slightly pessimistic instead.
     """
 
     hidden_size: int = 64
     kernel_init: Initializer = orthogonal(0.01)
+    bias_init: float = 0.0
 
     @nn.compact
     def __call__(self, features: jax.Array) -> jax.Array:
         features = features.astype(jnp.float32)  # float32 head, as for the action scores
         hidden = nn.relu(nn.Dense(self.hidden_size)(global_pool(features)))
-        return nn.Dense(1, kernel_init=self.kernel_init)(hidden).squeeze(-1)
+        return nn.Dense(1, kernel_init=self.kernel_init, bias_init=constant(self.bias_init))(
+            hidden
+        ).squeeze(-1)
