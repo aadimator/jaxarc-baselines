@@ -50,15 +50,15 @@ def test_config_without_run_meta_is_unchanged():
 
 
 def test_run_meta_sets_project_tags_group_and_job_type():
-    cfg = base_cfg(stage="tune-l1", track="E", question="Q2", campaign_id="E-ppo-mini")
+    cfg = base_cfg(stage="tune-s1", track="E", question="Q2", campaign_id="E-ppo-mini")
 
     run_meta.apply_run_meta(cfg)
 
     wandb = cfg.logger.loggers.wandb
     assert wandb.project == "jaxarc-tmlr"
-    assert list(wandb.tag) == ["tune-l1", "E", "Q2", "ff_ppo", "Mini-all"]
+    assert list(wandb.tag) == ["tune-s1", "E", "Q2", "ff_ppo", "Mini-all"]
     assert list(wandb.group_tag) == ["E-ppo-mini"]
-    assert os.environ["WANDB_JOB_TYPE"] == "tune-l1"
+    assert os.environ["WANDB_JOB_TYPE"] == "tune-s1"
 
 
 def test_provenance_is_recorded_in_the_config():
@@ -117,7 +117,7 @@ def test_ablation_is_a_recorded_stage():
     assert os.environ["WANDB_JOB_TYPE"] == "ablation"
 
 
-@pytest.mark.parametrize("stage", ["tune-l1", "final", "scale", "ablation"])
+@pytest.mark.parametrize("stage", ["tune-s1", "tune-s2", "final", "scale", "ablation"])
 def test_dirty_tree_blocks_recorded_runs(monkeypatch, stage):
     dirty = {k: dict(v) for k, v in CLEAN.items()}
     dirty["jaxarc"]["dirty"] = True
@@ -150,3 +150,29 @@ def test_real_provenance_reads_git(monkeypatch):
     for repo in info.values():
         assert len(repo["commit"]) == 40
         assert isinstance(repo["dirty"], bool)
+
+
+@pytest.mark.parametrize("stage", ["tune-s1", "tune-s2", "final"])
+def test_tuning_stages_are_recorded(stage):
+    # tune-s1: stage 1 of the random search (final schedule stopped at B/2);
+    # tune-s2: the top configs at the full budget; final: the frozen config (strategy-v4 §11c).
+    cfg = base_cfg(stage=stage, track="E", question="Q2", campaign_id="E-ppo-mini")
+
+    run_meta.apply_run_meta(cfg)
+
+    assert os.environ["WANDB_JOB_TYPE"] == stage
+    assert stage in run_meta.RECORDED
+
+
+@pytest.mark.parametrize("stage", ["tune-l1", "tune-l1-s2", "tune-l2", "tune-l2-s2"])
+def test_old_level_stage_names_are_gone(stage):
+    with pytest.raises(ValueError, match="run_meta.stage"):
+        run_meta.apply_run_meta(base_cfg(stage=stage, track="E", question="Q2", campaign_id="c"))
+
+
+def test_config_id_becomes_a_tag():
+    cfg = base_cfg(stage="tune-s1", track="E", question="Q2", campaign_id="E-ppo-mini", config_id="c07")
+
+    run_meta.apply_run_meta(cfg)
+
+    assert list(cfg.logger.loggers.wandb.tag) == ["tune-s1", "E", "Q2", "ff_ppo", "Mini-all", "c07"]
