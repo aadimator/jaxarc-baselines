@@ -9,6 +9,7 @@ both groups in allowed-operations order.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 
 import distrax
@@ -21,6 +22,10 @@ from jaxarc.envs.grid_operations import SELECTION_INDEPENDENT_OPERATIONS
 from jaxarc.types import ARCOperationType
 from tensorflow_probability.substrates.jax.distributions import Categorical
 
+OPERATION_NAMES = {
+    value: name.lower() for name, value in vars(ARCOperationType).items() if name.isupper()
+}
+NORMS = ("none", "layer")
 NUM_COLOURS = 10
 # Padding (-1 in observations) gets its own category after colours 0-9.
 PADDING_CATEGORY = NUM_COLOURS
@@ -48,6 +53,46 @@ def split_operations(
     dependent = [op for op in operations if op not in SELECTION_INDEPENDENT_OPERATIONS]
     independent = [op for op in operations if op in SELECTION_INDEPENDENT_OPERATIONS]
     return dependent, independent
+
+
+def action_ranges(
+    allowed_operations: Sequence[int] | None, action_dim: int
+) -> dict[str, tuple[int, int]]:
+    """Each operation's flat actions as a [start, stop) range, by operation name.
+
+    A selection-dependent operation covers one slot of H*W cell actions; the
+    selection-independent ones (Copy input, Submit) get one action each, after
+    every cell action. Both groups are in allowed-operations order.
+    """
+    dependent, independent = split_operations(allowed_operations)
+    first = action_dim - len(independent)
+    cells = first // len(dependent) if dependent else 0
+    ranges = {
+        OPERATION_NAMES[op]: (slot * cells, (slot + 1) * cells)
+        for slot, op in enumerate(dependent)
+    }
+    ranges.update(
+        {OPERATION_NAMES[op]: (first + i, first + i + 1) for i, op in enumerate(independent)}
+    )
+    return ranges
+
+
+def scaled_submit_bias(
+    submit_bias: float, action_dim: int, reference_actions: int | None
+) -> float:
+    """The Submit bias that keeps its initial odds as at ``reference_actions`` actions.
+
+    With every other logit near 0 at init, P(Submit) = e^b / (e^b + N - 1). Adding
+    ln((N - 1) / (N_ref - 1)) keeps that probability equal to what ``submit_bias``
+    gives over N_ref actions. None leaves the bias as it is.
+    """
+    if reference_actions is None:
+        return submit_bias
+    if reference_actions < 2:
+        raise ValueError(
+            f"submit_bias_reference_actions must be at least 2, got {reference_actions}"
+        )
+    return submit_bias + math.log((action_dim - 1) / (reference_actions - 1))
 
 
 def global_pool(x: jax.Array) -> jax.Array:
@@ -102,6 +147,9 @@ class SpatialTorso(nn.Module):
     )
     embed_dim: int = 8
     dtype: str = "bfloat16"
+    # "layer": LayerNorm over channels before each block and before the output
+    # (pre-norm). "none" is the network as it was, params included.
+    norm: str = "none"
 
     @nn.compact
     def __call__(self, observation: jax.Array) -> jax.Array:
@@ -109,7 +157,14 @@ class SpatialTorso(nn.Module):
             raise ValueError(
                 f"Unknown dtype {self.dtype!r}; use one of {sorted(DTYPES)}"
             )
+        if self.norm not in NORMS:
+            raise ValueError(f"Unknown norm {self.norm!r}; use one of {list(NORMS)}")
         dtype = DTYPES[self.dtype]
+        norm = (
+            (lambda: nn.LayerNorm(dtype=dtype))
+            if self.norm == "layer"
+            else (lambda: lambda v: v)
+        )
 
         if self.colour_input == "embed":
             x = ColourEmbedding(self.embed_dim, dtype=dtype, name="colour_embedding")(
@@ -125,12 +180,12 @@ class SpatialTorso(nn.Module):
         conv = lambda: nn.Conv(self.channels, (3, 3), dtype=dtype)
         x = conv()(x)
         for block in range(self.num_blocks):
-            y = conv()(nn.relu(x))
+            y = conv()(nn.relu(norm()(x)))
             x = x + conv()(nn.relu(y))
             if (block + 1) % self.global_every == 0:
                 context = nn.Dense(self.channels, dtype=dtype)(global_pool(x))
                 x = x + context[..., None, None, :]
-        return nn.relu(x)
+        return nn.relu(norm()(x))
 
 
 class SpatialActionScores(nn.Module):
@@ -208,7 +263,9 @@ class SpatialPolicyHead(nn.Module):
 
     ``submit_bias`` is the Submit logit's starting bias (0 by default). The other
     logits start near 0, so +1 raises the initial per-step Submit probability
-    about e-fold.
+    about e-fold. ``submit_bias_reference_actions`` scales it with the action
+    count: the initial Submit probability is then what ``submit_bias`` gives over
+    that many actions (see `scaled_submit_bias`). None (the default) leaves it as is.
     """
 
     action_dim: int
@@ -216,12 +273,14 @@ class SpatialPolicyHead(nn.Module):
     hidden_size: int = 64
     kernel_init: Initializer = orthogonal(0.01)
     submit_bias: float = 0.0
+    submit_bias_reference_actions: int | None = None
 
     @nn.compact
     def __call__(self, features: jax.Array) -> Categorical:
-        return Categorical(
-            logits=_action_scores(self, features, self.kernel_init, self.submit_bias)
+        bias = scaled_submit_bias(
+            self.submit_bias, self.action_dim, self.submit_bias_reference_actions
         )
+        return Categorical(logits=_action_scores(self, features, self.kernel_init, bias))
 
 
 class SpatialQHead(nn.Module):

@@ -10,6 +10,7 @@ torso:
   colour_input: embed # embed | raw
   embed_dim: 8
   dtype: bfloat16 # bfloat16 | float32 (compute only; params, logits and value stay float32)
+  norm: none # none | layer (LayerNorm before each block and the output)
 
 actor_network:
   pre_torso: ${network.torso}
@@ -18,6 +19,7 @@ actor_network:
     allowed_operations: ${action.allowed_operations}
     hidden_size: 64
     submit_bias: 0.0 # Submit logit's starting bias
+    submit_bias_reference_actions: null # scale submit_bias to keep its initial odds at this action count; null = unscaled
 
 critic_network:
   pre_torso: ${network.torso}
