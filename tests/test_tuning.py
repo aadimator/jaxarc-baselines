@@ -98,9 +98,10 @@ def test_stage1_runs_the_final_schedule_and_stops_at_half():
     row = rows[0]
     assert row["name"] == "c00__s1" and row["config_id"] == "c00" and row["seed"] == 1
     ov = row["overrides"]
-    assert "arch.total_timesteps=100000000" in ov
-    assert "system.lr_schedule_timesteps=200000000" in ov
-    assert "arch.num_evaluation=10" in ov
+    b, evals = campaign["budget"], campaign["num_evaluation"]
+    assert f"arch.total_timesteps={b // 2}" in ov
+    assert f"system.lr_schedule_timesteps={b}" in ov
+    assert f"arch.num_evaluation={evals // 2}" in ov
     assert "+env.eval_scenario=Mini-split_dev" in ov
     assert "+run_meta.stage=tune-s1" in ov and "+run_meta.config_id=c00" in ov
     assert "+run_meta.campaign_id=E-ppo-mini" in ov
@@ -118,8 +119,8 @@ def test_stage2_and_final_run_the_full_budget_on_fresh_seeds():
     assert {r["seed"] for r in s2} == {101, 102, 103, 104, 105}
     assert len(final) == 20 and {r["seed"] for r in final} == set(range(1001, 1021))
     for row in s2 + final:
-        assert "arch.total_timesteps=200000000" in row["overrides"]
-        assert "arch.num_evaluation=20" in row["overrides"]
+        assert f"arch.total_timesteps={campaign['budget']}" in row["overrides"]
+        assert f"arch.num_evaluation={campaign['num_evaluation']}" in row["overrides"]
         assert not any(o.startswith("system.lr_schedule_timesteps") for o in row["overrides"])
     assert "+env.eval_scenario=Mini-split_test" in final[0]["overrides"]
     assert "+run_meta.stage=final" in final[0]["overrides"]
@@ -303,4 +304,4 @@ def test_matrix_overrides_compose_with_hydra(stage):
     assert cfg.run_meta.stage == tuning.RUN_META_STAGE[stage]
     assert cfg.run_meta.config_id == row["config_id"]
     assert cfg.arch.seed == row["seed"]
-    assert cfg.system.lr_schedule_timesteps == (200_000_000 if stage == "s1" else None)
+    assert cfg.system.lr_schedule_timesteps == (campaign["budget"] if stage == "s1" else None)
