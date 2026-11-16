@@ -155,6 +155,11 @@ def test_learner_runs_a_few_updates_on_cpu():
     assert any(not jnp.allclose(a, b) for a, b in zip(before, after))
     for name in ("actor_loss", "value_loss", "entropy", "total_loss"):
         assert jnp.isfinite(output.train_metrics[name]).all(), name
+    # Collapse diagnostics (strategy-v4 §12). The default raw ops have no Copy input.
+    assert "copy_input_prob" not in output.train_metrics
+    for name in ("max_action_prob", "submit_prob", "resize_prob"):
+        values = output.train_metrics[name]
+        assert ((values >= 0) & (values <= 1)).all(), name
 
 
 def test_run_experiment_registers_the_shared_system():
@@ -217,3 +222,55 @@ def test_learner_lr_follows_the_horizon():
     # Halfway through the run is a quarter of the way through the schedule.
     assert lr(10 * per_update) == pytest.approx(1e-3 * (1 - 10 / 40))
     assert lr(20 * per_update) == pytest.approx(5e-4)
+
+
+def test_loss_logs_the_named_action_probabilities_and_the_max_probability():
+    from stoix.networks.base import FeedForwardActorCritic
+
+    network = FeedForwardActorCritic(
+        torso=SpatialTorso(channels=8, num_blocks=1),
+        action_head=SpatialPolicyHead(
+            action_dim=276, allowed_operations=RAW_OPS, submit_bias=2.0
+        ),
+        critic_head=SpatialValueHead(),
+    )
+    system = compose_config().system
+    params = network.init(jax.random.PRNGKey(0), jnp.zeros((1, 5, 5, 12)))
+    batch = fixed_batch(network, params)
+
+    _, info = shared_ppo_loss(
+        params,
+        network.apply,
+        *batch,
+        system,
+        named_actions={"submit": (275, 276), "resize": (250, 275)},
+    )
+    probs = jax.nn.softmax(network.apply(params, batch[0].obs)[0].logits)
+
+    assert float(info["submit_prob"]) == pytest.approx(float(probs[:, 275].mean()), rel=1e-5)
+    assert float(info["resize_prob"]) == pytest.approx(
+        float(probs[:, 250:275].sum(axis=-1).mean()), rel=1e-5
+    )
+    assert float(info["max_action_prob"]) == pytest.approx(
+        float(probs.max(axis=-1).mean()), rel=1e-5
+    )
+
+
+def test_named_action_metrics_leave_the_loss_unchanged():
+    from stoix.networks.base import FeedForwardActorCritic
+
+    network = FeedForwardActorCritic(
+        torso=SpatialTorso(channels=8, num_blocks=1),
+        action_head=SpatialPolicyHead(action_dim=276, allowed_operations=RAW_OPS),
+        critic_head=SpatialValueHead(),
+    )
+    system = compose_config().system
+    params = network.init(jax.random.PRNGKey(0), jnp.zeros((1, 5, 5, 12)))
+    batch = fixed_batch(network, params)
+
+    plain, _ = shared_ppo_loss(params, network.apply, *batch, system)
+    named, _ = shared_ppo_loss(
+        params, network.apply, *batch, system, named_actions={"submit": (275, 276)}
+    )
+
+    assert float(plain) == float(named)
