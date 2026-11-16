@@ -4,8 +4,8 @@ track: E
 question: Q2
 space: ppo_shared
 config_name: default_ppo_jaxarc
-budget: 200000000          # B; provisional until the MiniARC budget check (§11c)
-num_evaluation: 20         # evals over B; stage 1 gets the first half of them
+budget: 800000000          # B; the budget check moved it 200M -> 400M -> 800M (§11d, job 12927472)
+num_evaluation: 40         # evals over B (one per 20M); stage 1 gets the first half of them
 sample_seed: 20261114
 stage1: {configs: 32, seeds: {first: 1, count: 3}, fraction: 0.5}
 stage2: {top_k: 4, seeds: {first: 101, count: 5}}
