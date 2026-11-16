@@ -23,7 +23,11 @@ stage=$(basename "$matrix" .jsonl)
 out=$(dirname "$matrix")/$stage
 py="$repo/.pixi/envs/default/bin/python -u"
 export JAX_PLATFORMS=cuda,cpu XLA_PYTHON_CLIENT_PREALLOCATE=false PYTHONFAULTHANDLER=1
-export JAX_COMPILATION_CACHE_DIR="${TMPDIR:-/tmp}/jaxcache-${SLURM_JOB_ID}-${SLURM_ARRAY_TASK_ID:-0}"
+# Temp files and the compile cache go to a per-task scratch dir, removed on exit: a full
+# node /tmp killed XLA mid-run ("Unable to write PTX contents", job 12929440).
+export TMPDIR="/N/scratch/$USER/jaxtmp/${SLURM_JOB_ID:-0}-${SLURM_ARRAY_TASK_ID:-0}"
+mkdir -p "$TMPDIR"; trap 'rm -rf "$TMPDIR"' EXIT
+export JAX_COMPILATION_CACHE_DIR="$TMPDIR/jaxcache"
 mkdir -p "$out"
 cd "$repo"
 
