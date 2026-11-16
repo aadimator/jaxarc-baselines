@@ -1,4 +1,4 @@
-"""Tests for the seeded MiniARC task split (train / dev / test)."""
+"""Tests for the seeded MiniARC and ConceptARC task splits (train / dev / test)."""
 
 from __future__ import annotations
 
@@ -12,6 +12,8 @@ from jaxarc_baselines import splits
 ROOT = Path(__file__).resolve().parents[1]
 MINIARC = ROOT / "data" / "MiniARC" / "data" / "MiniARC"
 SUBSETS = ROOT / "configs" / "env" / "jaxarc" / "subsets" / "Mini"
+CONCEPTARC = ROOT / "data" / "ConceptARC" / "corpus"
+CONCEPT_SUBSETS = ROOT / "configs" / "env" / "jaxarc" / "subsets" / "Concept"
 
 
 def pair(value: int) -> dict:
@@ -113,3 +115,73 @@ def test_committed_miniarc_split_matches_the_generator():
         assert data["task_ids"] == ids
     assert len(tasks) == 149
     assert {k: len(v) for k, v in expected.items()} == {"train": 89, "dev": 30, "test": 30}
+
+
+def concept_tasks(concepts: int = 3, per: int = 10) -> dict[str, list[dict]]:
+    """``Concept<c>/Concept<c><i>`` ids with distinct pairs, as ConceptARC names them."""
+    return {f"Concept{c}/Concept{c}{i}": [pair(1000 * c + 10 * i)] for c in range(concepts) for i in range(per)}
+
+
+def test_stratified_split_takes_the_sizes_from_every_stratum():
+    tasks = concept_tasks()
+
+    split = splits.split_by_stratum(tasks, {"test": 2, "dev": 2}, seed=0)
+
+    assert {k: len(v) for k, v in split.items()} == {"train": 18, "dev": 6, "test": 6}
+    for c in range(3):
+        for name, n in (("train", 6), ("dev", 2), ("test", 2)):
+            assert sum(t.startswith(f"Concept{c}/") for t in split[name]) == n
+    assert sorted(t for ids in split.values() for t in ids) == sorted(tasks)
+    assert all(ids == sorted(ids) for ids in split.values())
+
+
+def test_stratified_split_depends_only_on_the_seed():
+    tasks = concept_tasks()
+    reordered = dict(reversed(list(tasks.items())))
+
+    a = splits.split_by_stratum(tasks, {"test": 2, "dev": 2}, seed=5)
+
+    assert a == splits.split_by_stratum(reordered, {"test": 2, "dev": 2}, seed=5)
+    assert a != splits.split_by_stratum(tasks, {"test": 2, "dev": 2}, seed=6)
+
+
+def test_stratified_split_keeps_linked_tasks_together():
+    tasks = concept_tasks()
+    tasks["Concept1/Concept19"] = list(tasks["Concept1/Concept18"])  # shared pair
+
+    for seed in range(10):
+        split = splits.split_by_stratum(tasks, {"test": 2, "dev": 2}, seed=seed)
+        where = {t: name for name, ids in split.items() for t in ids}
+        assert where["Concept1/Concept18"] == where["Concept1/Concept19"]
+
+
+def test_stratified_split_refuses_links_across_strata():
+    tasks = concept_tasks()
+    tasks["Concept2/Concept20"] = list(tasks["Concept0/Concept00"])
+
+    with pytest.raises(ValueError, match="Concept0/Concept00"):
+        splits.split_by_stratum(tasks, {"test": 2, "dev": 2}, seed=0)
+
+
+def test_concept_tasks_load_with_concept_slash_task_ids(tmp_path):
+    for concept, task in (("Center", "Center1"), ("Copy", "Copy3")):
+        (tmp_path / concept).mkdir()
+        (tmp_path / concept / f"{task}.json").write_text(
+            '{"train": [{"input": [[1]], "output": [[2]]}], "test": [{"input": [[3]], "output": [[4]]}]}')
+
+    tasks = splits.load_concept_tasks(tmp_path)
+
+    assert sorted(tasks) == ["Center/Center1", "Copy/Copy3"]
+    assert len(tasks["Copy/Copy3"]) == 2
+
+
+@pytest.mark.skipif(not CONCEPTARC.exists(), reason="ConceptARC data not downloaded")
+def test_committed_conceptarc_split_matches_the_generator():
+    tasks = splits.load_concept_tasks(CONCEPTARC)
+    expected = splits.split_by_stratum(tasks, splits.CONCEPTARC_SIZES, seed=splits.CONCEPTARC_SEED)
+
+    for name, ids in expected.items():
+        data = yaml.safe_load((CONCEPT_SUBSETS / f"split_{name}.yaml").read_text())
+        assert data["task_ids"] == ids
+    assert len(tasks) == 160
+    assert {k: len(v) for k, v in expected.items()} == {"train": 96, "dev": 32, "test": 32}
