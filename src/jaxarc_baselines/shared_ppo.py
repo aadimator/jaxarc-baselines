@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import copy
 import time
+from collections.abc import Mapping
 from typing import Any, Tuple
 
 import chex
@@ -48,6 +49,11 @@ from stoix.utils.running_statistics import (
 from stoix.utils.total_timestep_checker import check_total_timesteps
 from stoix.utils.training import make_learning_rate_schedule
 
+from jaxarc_baselines.spatial_network import SpatialPolicyHead, action_ranges
+
+# Operations whose policy mass is logged when the head has them (strategy-v4 §12).
+LOGGED_OPERATIONS = ("submit", "copy_input", "resize")
+
 
 def shared_ppo_loss(
     params: FrozenDict,
@@ -56,8 +62,15 @@ def shared_ppo_loss(
     gae: chex.Array,
     targets: chex.Array,
     system: DictConfig,
+    named_actions: Mapping[str, tuple[int, int]] | None = None,
 ) -> Tuple:
-    """Policy loss + vf_coef * value loss - ent_coef * entropy, on one forward pass."""
+    """Policy loss + vf_coef * value loss - ent_coef * entropy, on one forward pass.
+
+    Also logs, without changing the loss, the mean max action probability and the
+    mean policy mass on each [start, stop) action range in ``named_actions`` (as
+    ``<name>_prob``): a policy that collapses onto one action shows up there
+    (strategy-v4 §12).
+    """
     # RERUN NETWORK
     actor_policy, value = apply_fn(params, traj_batch.obs)
     log_prob = actor_policy.log_prob(traj_batch.action)
@@ -79,6 +92,11 @@ def shared_ppo_loss(
         "target_value": targets,
         "total_loss": total_loss,
     }
+    log_probs = jax.nn.log_softmax(jax.lax.stop_gradient(actor_policy.logits), axis=-1)
+    loss_info["max_action_prob"] = jnp.exp(log_probs.max(axis=-1)).mean()
+    for name, (start, stop) in (named_actions or {}).items():
+        mass = jnp.exp(jax.nn.logsumexp(log_probs[..., start:stop], axis=-1))
+        loss_info[f"{name}_prob"] = mass.mean()
     return total_loss, loss_info
 
 
@@ -87,8 +105,9 @@ def get_learner_fn(
     apply_fn: Any,
     update_fn: optax.TransformUpdateFn,
     config: DictConfig,
+    named_actions: Mapping[str, tuple[int, int]] | None = None,
 ) -> LearnerFn[OnPolicyLearnerState]:
-    """Get the learner function."""
+    """Get the learner function. ``named_actions`` go to `shared_ppo_loss`."""
 
     def _update_step(
         learner_state: OnPolicyLearnerState, _: Any
@@ -222,7 +241,13 @@ def get_learner_fn(
                 # CALCULATE LOSS
                 grad_fn = jax.grad(shared_ppo_loss, has_aux=True)
                 grads, loss_info = grad_fn(
-                    params, apply_fn, traj_batch, advantages, targets, config.system
+                    params,
+                    apply_fn,
+                    traj_batch,
+                    advantages,
+                    targets,
+                    config.system,
+                    named_actions,
                 )
 
                 # Compute the parallel mean (pmean) over the batch.
@@ -450,8 +475,14 @@ def learner_setup(
     params = network.init(net_key, init_x)
     opt_state = optim.init(params)
 
+    # Log the policy mass on Submit, Copy input and Resize, where the head has them.
+    named_actions = None
+    if isinstance(action_head, SpatialPolicyHead):
+        ranges = action_ranges(action_head.allowed_operations, num_actions)
+        named_actions = {op: ranges[op] for op in LOGGED_OPERATIONS if op in ranges}
+
     # Get batched iterated update and replicate it to pmap it over cores.
-    learn = get_learner_fn(env, network.apply, optim.update, config)
+    learn = get_learner_fn(env, network.apply, optim.update, config, named_actions)
     learn = jax.pmap(learn, axis_name="device")
 
     # Initialise environment states and timesteps: across devices and batches.
