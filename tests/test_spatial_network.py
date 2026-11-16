@@ -558,3 +558,149 @@ def test_init_options_have_their_defaults_and_reach_the_heads(name, submit_bias,
 
     assert head.submit_bias == 1.0
     assert critic_head.bias_init == -1.0
+
+
+# --- 30x30 collapse options (strategy-v4 §12) ----------------------------------
+
+
+def initial_submit_prob(profile, size, **head_options):
+    action_dim = action_count(profile, size)
+    head = SpatialPolicyHead(
+        action_dim=action_dim, allowed_operations=PROFILES[profile], **head_options
+    )
+    features = jax.random.normal(jax.random.PRNGKey(3), (4, size, size, 16))
+    policy = head.apply(head.init(jax.random.PRNGKey(0), features), features)
+    return float(jax.nn.softmax(policy.logits)[:, submit_index(profile, size)].mean())
+
+
+def test_scaled_submit_bias_gives_30x30_the_initial_submit_rate_of_5x5():
+    # +1 over 276 actions at 5x5 is 36x more likely to submit than +1 over
+    # 9,901 at 30x30 (raw ops); scaling by the action count closes that gap.
+    reference = action_count("raw", 5)
+    at_5x5 = initial_submit_prob("raw", 5, submit_bias=1.0)
+    unscaled = initial_submit_prob("raw", 30, submit_bias=1.0)
+    scaled = initial_submit_prob(
+        "raw", 30, submit_bias=1.0, submit_bias_reference_actions=reference
+    )
+
+    assert unscaled < at_5x5 / 30
+    assert scaled == pytest.approx(at_5x5, rel=0.05)
+
+
+@pytest.mark.parametrize("profile", ["raw", "full"])
+def test_scaled_submit_bias_is_the_plain_bias_at_the_reference_action_count(profile):
+    action_dim = action_count(profile, 5)
+    features = jax.random.normal(jax.random.PRNGKey(3), (2, 5, 5, 16))
+    key = jax.random.PRNGKey(0)
+    logits = [
+        head.apply(head.init(key, features), features).logits
+        for head in (
+            SpatialPolicyHead(
+                action_dim=action_dim,
+                allowed_operations=PROFILES[profile],
+                submit_bias=1.0,
+                **options,
+            )
+            for options in ({}, {"submit_bias_reference_actions": action_dim})
+        )
+    ]
+
+    np.testing.assert_array_equal(logits[0], logits[1])
+
+
+def test_scaled_submit_bias_moves_only_the_submit_logit():
+    action_dim = action_count("full", 30)
+    features = jax.random.normal(jax.random.PRNGKey(3), (2, 30, 30, 16))
+    key = jax.random.PRNGKey(0)
+    make = lambda **o: SpatialPolicyHead(
+        action_dim=action_dim, allowed_operations=PROFILES["full"], submit_bias=1.0, **o
+    )
+    plain, scaled = make(), make(submit_bias_reference_actions=action_count("full", 5))
+    diff = scaled.apply(scaled.init(key, features), features).logits - plain.apply(
+        plain.init(key, features), features
+    ).logits
+    expected = np.zeros(action_dim, dtype=np.float32)
+    expected[submit_index("full", 30)] = np.log((action_dim - 1) / (action_count("full", 5) - 1))
+
+    np.testing.assert_allclose(diff, np.broadcast_to(expected, diff.shape), atol=1e-5)
+
+
+def test_a_reference_action_count_below_two_is_rejected():
+    head = SpatialPolicyHead(
+        action_dim=action_count("raw", 5),
+        allowed_operations=PROFILES["raw"],
+        submit_bias=1.0,
+        submit_bias_reference_actions=1,
+    )
+    with pytest.raises(ValueError, match="submit_bias_reference_actions"):
+        head.init(jax.random.PRNGKey(0), jnp.zeros((1, 5, 5, 8)))
+
+
+@pytest.mark.parametrize("profile", ["raw", "full"])
+@pytest.mark.parametrize("size", [5, 30])
+def test_action_ranges_cover_every_action_once_in_the_head_layout(profile, size):
+    from jaxarc_baselines.spatial_network import action_ranges
+
+    action_dim = action_count(profile, size)
+    ranges = action_ranges(PROFILES[profile], action_dim)
+    covered = sorted(i for start, stop in ranges.values() for i in range(start, stop))
+
+    assert covered == list(range(action_dim))
+    assert ranges["submit"] == (submit_index(profile, size), submit_index(profile, size) + 1)
+    # Resize is the last selection-dependent op in both profiles: the last H*W slot.
+    resize = ranges["resize"]
+    assert resize[1] - resize[0] == size * size
+    assert resize[1] == action_dim - (2 if profile == "full" else 1)
+
+
+def test_torso_without_norm_has_the_same_params_and_output_as_before():
+    torso, explicit = SpatialTorso(channels=16), SpatialTorso(channels=16, norm="none")
+    obs = observation(5)
+    params = torso.init(jax.random.PRNGKey(0), obs)
+
+    assert torso.norm == "none"
+    assert not any("LayerNorm" in name for name in params["params"])
+    assert jax.tree.map(jnp.shape, params) == jax.tree.map(
+        jnp.shape, explicit.init(jax.random.PRNGKey(0), obs)
+    )
+    np.testing.assert_array_equal(
+        torso.apply(params, obs), explicit.apply(params, obs)
+    )
+
+
+def scaled_conv_rms(norm, scale):
+    """Torso output RMS after multiplying every conv kernel by `scale`."""
+    torso = SpatialTorso(channels=16, norm=norm, dtype="float32")
+    obs = observation(30)
+    params = torso.init(jax.random.PRNGKey(0), obs)
+    params = jax.tree_util.tree_map_with_path(
+        lambda path, p: p * scale
+        if any(getattr(k, "key", "").startswith("Conv") for k in path)
+        and getattr(path[-1], "key", "") == "kernel"
+        else p,
+        params,
+    )
+    return float(jnp.sqrt(jnp.mean(torso.apply(params, obs) ** 2)))
+
+
+def test_layer_norm_keeps_the_torso_output_scale_when_the_weights_grow():
+    assert scaled_conv_rms("none", 4.0) > 20 * scaled_conv_rms("none", 1.0)
+    assert scaled_conv_rms("layer", 4.0) < 2 * scaled_conv_rms("layer", 1.0)
+
+
+def test_unknown_norm_is_rejected():
+    with pytest.raises(ValueError, match="norm"):
+        SpatialTorso(norm="batch").init(jax.random.PRNGKey(0), observation(5))
+
+
+@pytest.mark.parametrize("name", ["arc_spatial", "arc_spatial_shared", "arc_spatial_pqn"])
+def test_collapse_options_default_off_in_the_configs(name):
+    config = network_config(name)
+
+    assert config.torso.norm == "none"
+    if name != "arc_spatial_pqn":
+        assert config.actor_network.action_head.submit_bias_reference_actions is None
+        head = hydra.utils.instantiate(
+            config.actor_network.action_head, action_dim=action_count("raw", 5)
+        )
+        assert head.submit_bias_reference_actions is None
