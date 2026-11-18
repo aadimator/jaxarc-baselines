@@ -693,11 +693,20 @@ def test_unknown_norm_is_rejected():
         SpatialTorso(norm="batch").init(jax.random.PRNGKey(0), observation(5))
 
 
-@pytest.mark.parametrize("name", ["arc_spatial", "arc_spatial_shared", "arc_spatial_pqn"])
-def test_collapse_options_default_off_in_the_configs(name):
+@pytest.mark.parametrize(
+    ("name", "norm"),
+    [
+        ("arc_spatial", "none"),
+        # The shared torso ships with LayerNorm: it stopped the 30x30 collapse and
+        # beat SVh alone on MiniARC (strategy-v4 §12, §13a). The others are untested.
+        ("arc_spatial_shared", "layer"),
+        ("arc_spatial_pqn", "none"),
+    ],
+)
+def test_collapse_options_have_their_defaults_in_the_configs(name, norm):
     config = network_config(name)
 
-    assert config.torso.norm == "none"
+    assert config.torso.norm == norm
     if name != "arc_spatial_pqn":
         assert config.actor_network.action_head.submit_bias_reference_actions is None
         head = hydra.utils.instantiate(
