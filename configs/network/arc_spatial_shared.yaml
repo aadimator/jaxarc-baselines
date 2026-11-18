@@ -9,7 +9,7 @@ torso:
   colour_input: embed # embed | raw
   embed_dim: 8
   dtype: bfloat16 # bfloat16 | float32 (compute only; params, logits and value stay float32)
-  norm: none # none | layer (LayerNorm before each block and the output)
+  norm: layer # none | layer (LayerNorm before each block and the output); layer stops the 30x30 collapse (strategy-v4 §12)
 
 shared_network:
   pre_torso: ${network.torso}
