@@ -60,3 +60,17 @@ def test_arcle_runs_bbox_on_the_same_canvas():
     assert result["canvas"] == 5
     assert result["steps_timed"] == 2 * 4
     assert result["sps_median"] > 0
+
+
+def test_arcle_pairs_come_from_the_repo_data_folder():
+    # The sibling JaxARC checkout is absent on the cluster; the repo's data/ folder is not.
+    pairs = throughput._pairs("concept")
+
+    assert pairs
+    assert all(max(i.shape + o.shape) <= 30 for i, o in pairs)
+    assert throughput.data_root("concept") == throughput.ROOT / "data" / "ConceptARC" / "corpus"
+
+
+def test_arcle_loader_refuses_an_empty_pair_list():
+    with pytest.raises(ValueError, match="no pairs"):
+        throughput._Loader([])
