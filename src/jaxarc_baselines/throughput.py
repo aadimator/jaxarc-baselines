@@ -191,14 +191,17 @@ def measure_jaxarc(
 # --- ARCLE ---------------------------------------------------------------------
 
 
+def data_root(dataset: str) -> Path:
+    """The dataset's task JSON folder inside this repo's ``data/`` (present on every host)."""
+    if dataset == "mini":
+        return ROOT / "data" / "MiniARC" / "data" / "MiniARC"
+    return ROOT / "data" / "ConceptARC" / "corpus"
+
+
 def _pairs(dataset: str) -> list[tuple[np.ndarray, np.ndarray]]:
     """The demo pairs of every task in the dataset."""
-    if dataset == "mini":
-        root = ROOT / "data" / "MiniARC" / "data" / "MiniARC"
-        files = sorted(root.glob("*.json"))
-    else:
-        root = ROOT.parent / "JaxARC" / "data" / "ConceptARC" / "corpus"
-        files = sorted(root.glob("*/*.json"))
+    root = data_root(dataset)
+    files = sorted(root.glob("*.json" if dataset == "mini" else "*/*.json"))
     pairs = []
     for f in files:
         for pair in json.loads(f.read_text())["train"]:
@@ -210,6 +213,8 @@ class _Loader:
     """ARCLE loader that hands out the dataset's pairs in turn."""
 
     def __init__(self, pairs):
+        if not pairs:
+            raise ValueError("ARCLE loader got no pairs: is the dataset's data folder there?")
         self.data = [([i], [o], [], [], {"id": str(k)}) for k, (i, o) in enumerate(pairs)]
         self.next = 0
 
@@ -365,7 +370,7 @@ def main() -> None:
             with args.out.open("a") as f:
                 f.write(json.dumps(row) + "\n")
             print(json.dumps({k: v for k, v in row.items() if k != "system"}), flush=True)
-        if "error" in row and "RESOURCE_EXHAUSTED" in row["error"]:
+        if "error" in row:  # an OOM ends the sweep; so does anything a larger batch would repeat
             break
         if "times_s" in row and np.median(row["times_s"]) > args.max_seconds:
             break
