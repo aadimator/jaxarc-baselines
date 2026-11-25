@@ -96,3 +96,13 @@ def test_each_level_is_its_train_and_eval_tasks(level):
     assert not train & evaluation
     assert set(task_ids(level)) == train | evaluation
     assert len(task_ids(level)) == len(train) + len(evaluation)
+
+
+def test_default_loggers_need_no_optional_packages():
+    # Stoix's JSON logger imports marl-eval, which pins numpy<2 and so is an opt-in extra
+    # on jax 0.9; nothing here reads its output (metrics go to the held-out JSONL).
+    with initialize_config_dir(str(ROOT / "experiments" / "configs"), version_base="1.2"):
+        config = compose("default_ppo_jaxarc")
+
+    enabled = {name for name, logger in config.logger.loggers.items() if logger.get("enabled")}
+    assert "json" not in enabled
