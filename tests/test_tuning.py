@@ -305,3 +305,77 @@ def test_matrix_overrides_compose_with_hydra(stage):
     assert cfg.run_meta.config_id == row["config_id"]
     assert cfg.arch.seed == row["seed"]
     assert cfg.system.lr_schedule_timesteps == (campaign["budget"] if stage == "s1" else None)
+
+
+# --- the PQN campaign -----------------------------------------------------------
+
+
+def pqn_campaign():
+    return tuning.load_campaign(CAMPAIGNS / "E-pqn-mini.yaml")
+
+
+@pytest.mark.parametrize("stage", ["s1", "s2", "final"])
+def test_pqn_campaign_overrides_compose_with_hydra(stage):
+    from hydra import compose, initialize_config_dir
+
+    campaign, space = pqn_campaign(), tuning.load_space(SPACES / "pqn.yaml")
+    assert campaign["space"] == "pqn"
+    assert campaign["budget"] == mini_campaign()["budget"]  # same B as tuned PPO
+    config = tuning.sample_configs(space, 1, 0)[0]
+    row = tuning.stage_matrix(campaign, space, [config], stage)[0]
+    with initialize_config_dir(str(ROOT / "experiments" / "configs"), version_base="1.2"):
+        cfg = compose(campaign["config_name"], overrides=row["overrides"])
+
+    assert cfg.system.system_name == "ff_pqn"
+    assert cfg.network.actor_network.action_head._target_.endswith("SpatialQHead")
+    assert cfg.network.torso.norm == "layer"
+    assert cfg.network.torso.dtype == "bfloat16"
+    assert cfg.system.decay_epsilon is True
+    assert cfg.system.q_lr == config["values"]["q_lr"]
+    frac = config["values"]["exploration_fraction"]
+    assert cfg.system.exploration_fraction == pytest.approx(min(1.0, 2 * frac) if stage == "s1" else frac)
+    assert cfg.arch.total_num_envs == 2048
+    assert cfg.run_meta.campaign_id == "E-pqn-mini"
+
+
+# --- submitting on each cluster ---------------------------------------------------
+
+
+def planned(tmp_path):
+    d = tmp_path / "camp"
+    tuning.main(["plan", str(CAMPAIGNS / "E-pqn-mini.yaml"), "--out", str(d)])
+    return d
+
+
+def submitted(tmp_path, capsys, *flags):
+    d = planned(tmp_path)
+    capsys.readouterr()
+    tuning.main(["submit", str(d), "s1", "--chunk", "4", "--dry-run", *flags])
+    cmd = capsys.readouterr().out.strip().split()
+    script = cmd.index(str(tuning.SBATCH))
+    return d, cmd[:script], cmd[script + 1:]
+
+
+def test_submit_on_kailash_asks_for_an_h100_and_names_no_account(tmp_path, capsys):
+    d, flags, args = submitted(tmp_path, capsys, "--cluster", "kailash")
+
+    assert "--gres=gpu:h100:1" in flags
+    assert not any(f.startswith(("--account", "--partition")) for f in flags)
+    assert "--array=0-23%3" in flags  # 96 runs in chunks of 4; 3 GPUs per user there
+    assert args[:3] == [str(d / "s1.jsonl"), "4", "default_ppo_jaxarc"]
+    assert args[3] == str(tuning.REPO)
+    assert args[4] == str(tuning.REPO.parent / "jaxarc-runs" / "tmp")
+
+
+def test_submit_on_quartz_keeps_its_account_and_partition(tmp_path, capsys):
+    _, flags, args = submitted(tmp_path, capsys)
+
+    assert {"--account=r01044", "--partition=h100-single", "--gres=gpu:1", "--array=0-23"} <= set(flags)
+    assert args[3] == str(tuning.REPO)
+    assert args[4].startswith("/N/scratch/")
+
+
+def test_array_script_leaves_the_cluster_to_the_submit_command():
+    header = [x for x in tuning.SBATCH.read_text().splitlines() if x.startswith("#SBATCH")]
+
+    assert not any(("--account" in x or "--partition" in x or "--gres" in x) for x in header)
