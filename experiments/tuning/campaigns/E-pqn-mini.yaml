@@ -1,0 +1,31 @@
+# Track E, PQN (Stoix ff_pqn), MiniARC 5x5. strategy-v4 §11c, run on Kailash (§17).
+# Same budget, stages, seeds, splits and env as E-ppo-mini, so the two tuned rows compare.
+# Network: the shared spatial torso (bf16, LayerNorm) with one Q-value per point action,
+# as in the §13b PQN check (job 12966450).
+campaign_id: E-pqn-mini
+track: E
+question: Q2
+space: pqn
+config_name: default_ppo_jaxarc
+budget: 800000000          # B, as for PPO (§11d budget check)
+num_evaluation: 40         # evals over B (one per 20M); stage 1 gets the first half of them
+sample_seed: 20261125
+stage1: {configs: 32, seeds: {first: 1, count: 3}, fraction: 0.5}
+stage2: {top_k: 4, seeds: {first: 101, count: 5}}
+final: {seeds: {first: 1001, count: 20}}
+dev_scenario: Mini-split_dev
+test_scenario: Mini-split_test
+fixed:
+  - system=q_learning/ff_pqn
+  - network=arc_spatial_pqn
+  - network.torso.dtype=bfloat16
+  - network.torso.norm=layer
+  - reward=pbrs
+  - dataset=mini_arc
+  - env.scenario.name=Mini-split_train
+  - env.scenario.task_name=mini_split_train
+  - "+env.eval_reset_fn={_target_:jaxarc.evaluation.make_eval_reset_fn}"
+  - env.observation_wrappers.answer_grid=true
+  - arch.total_num_envs=2048
+  - arch.num_eval_episodes=960
+  - arch.absolute_metric=false

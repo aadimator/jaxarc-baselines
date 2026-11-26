@@ -1,31 +1,32 @@
 #!/usr/bin/env bash
-#SBATCH --account=r01044
-#SBATCH --partition=h100-single
-#SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=96G
 #SBATCH --time=02:00:00
 # One array task runs CHUNK rows of a tuning run matrix (strategy-v4 §11c).
 # Rows come from `python -m jaxarc_baselines.tuning plan|select|freeze`; submit with
-#   python -m jaxarc_baselines.tuning submit DIR STAGE [--chunk 8] [--dry-run]
-# which calls: sbatch --array=0-N tune_array.sbatch DIR/STAGE.jsonl CHUNK CONFIG_NAME
+#   python -m jaxarc_baselines.tuning submit DIR STAGE [--chunk 8] [--cluster quartz|kailash] [--dry-run]
+# which calls: sbatch --array=0-N <cluster flags> tune_array.sbatch DIR/STAGE.jsonl CHUNK CONFIG_NAME REPO SCRATCH
+# The account, partition and GPU request come from the submit command, so this script runs on
+# Quartz and on Kailash.
 # Runs land in DIR/STAGE/<name>/ with <name>.log (stdout) and <name>.wall (seconds,
 # written only when the run exits 0). Finished runs are skipped, so resubmitting the
 # same array resumes it.
 # Arguments, not --export: conv-compiling jobs with --export segfaulted (v3 §12).
 set -uo pipefail
 
-matrix=${1:?usage: sbatch --array=0-N tune_array.sbatch MATRIX CHUNK CONFIG_NAME}
+matrix=${1:?usage: sbatch --array=0-N tune_array.sbatch MATRIX CHUNK CONFIG_NAME [REPO SCRATCH]}
 chunk=${2:?chunk}
 config_name=${3:?config name}
-repo=/N/project/aadam/workspace/jaxarc-baselines
+repo=${4:-/N/project/aadam/workspace/jaxarc-baselines}
+scratch=${5:-/N/scratch/$USER/jaxtmp}
+case "$(hostname)" in kailash*) unset LD_LIBRARY_PATH ;; esac  # as in the Kailash T1 jobs
 stage=$(basename "$matrix" .jsonl)
 out=$(dirname "$matrix")/$stage
 py="$repo/.pixi/envs/default/bin/python -u"
 export JAX_PLATFORMS=cuda,cpu XLA_PYTHON_CLIENT_PREALLOCATE=false PYTHONFAULTHANDLER=1
 # Temp files and the compile cache go to a per-task scratch dir, removed on exit: a full
 # node /tmp killed XLA mid-run ("Unable to write PTX contents", job 12929440).
-export TMPDIR="/N/scratch/$USER/jaxtmp/${SLURM_JOB_ID:-0}-${SLURM_ARRAY_TASK_ID:-0}"
+export TMPDIR="$scratch/${SLURM_JOB_ID:-0}-${SLURM_ARRAY_TASK_ID:-0}"
 mkdir -p "$TMPDIR"; trap 'rm -rf "$TMPDIR"' EXIT
 export JAX_COMPILATION_CACHE_DIR="$TMPDIR/jaxcache"
 mkdir -p "$out"

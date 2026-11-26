@@ -15,7 +15,7 @@ scenario.
 This module does not import JAX, so it runs on a cluster login node.
 
     python -m jaxarc_baselines.tuning plan CAMPAIGN.yaml --out DIR
-    python -m jaxarc_baselines.tuning submit DIR s1 [--chunk 8] [--dry-run]
+    python -m jaxarc_baselines.tuning submit DIR s1 [--chunk 8] [--cluster quartz|kailash] [--dry-run]
     python -m jaxarc_baselines.tuning select DIR      # s1 results -> s2 matrix
     python -m jaxarc_baselines.tuning freeze DIR      # s2 results -> frozen.yaml, final matrix
     python -m jaxarc_baselines.tuning row MATRIX INDEX   # used by the sbatch script
@@ -24,6 +24,7 @@ This module does not import JAX, so it runs on a cluster login node.
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
 import re
 import shutil
@@ -43,6 +44,21 @@ SPACES = REPO / "experiments" / "tuning" / "spaces"
 SBATCH = REPO / "scripts" / "tuning" / "tune_array.sbatch"
 DISTS = ("log_uniform", "uniform", "choice")
 SCHEDULES = ("lr_horizon", "epsilon_fraction")
+
+
+class Cluster(NamedTuple):
+    sbatch: tuple[str, ...]  # account and GPU flags; the array script names no cluster
+    partition: str | None
+    scratch: str  # parent of the per-task TMPDIR and compile cache
+    max_parallel: int | None  # array throttle
+
+
+CLUSTERS = {
+    "quartz": Cluster(("--account=r01044", "--gres=gpu:1"), "h100-single",
+                      f"/N/scratch/{getpass.getuser()}/jaxtmp", None),
+    # One node, 7 H100s, at most 3 GPUs per user; no accounts or partitions.
+    "kailash": Cluster(("--gres=gpu:h100:1",), None, str(REPO.parent / "jaxarc-runs" / "tmp"), 3),
+}
 STAGES = ("s1", "s2", "final")
 RUN_META_STAGE = {"s1": "tune-s1", "s2": "tune-s2", "final": "final"}
 TIE_BREAK = {"s1": "train_success", "s2": "cell"}
@@ -442,9 +458,13 @@ def cmd_submit(args) -> None:
     campaign = load_campaign(d / "campaign.yaml")
     n = len(read_matrix(matrix))
     tasks = -(-n // args.chunk)
-    cmd = ["sbatch", f"--array=0-{tasks - 1}", f"--partition={args.partition}", f"--time={args.time}",
-           f"--job-name=tune-{campaign['campaign_id']}-{args.stage}", f"--output={d}/logs/%x-%A_%a.log",
-           str(SBATCH), str(matrix), str(args.chunk), campaign["config_name"]]
+    cluster = CLUSTERS[args.cluster]
+    array = f"--array=0-{tasks - 1}" + (f"%{cluster.max_parallel}" if cluster.max_parallel else "")
+    partition = args.partition or cluster.partition
+    cmd = ["sbatch", array, *cluster.sbatch, *([f"--partition={partition}"] if partition else []),
+           f"--time={args.time}", f"--job-name=tune-{campaign['campaign_id']}-{args.stage}",
+           f"--output={d}/logs/%x-%A_%a.log",
+           str(SBATCH), str(matrix), str(args.chunk), campaign["config_name"], str(REPO), cluster.scratch]
     print(" ".join(cmd))
     if not args.dry_run:
         (d / "logs").mkdir(exist_ok=True)
@@ -473,7 +493,8 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("dir", type=Path)
     p.add_argument("stage", choices=STAGES)
     p.add_argument("--chunk", type=int, default=8, help="runs per array task")
-    p.add_argument("--partition", default="h100-single")
+    p.add_argument("--cluster", choices=sorted(CLUSTERS), default="quartz")
+    p.add_argument("--partition", default=None, help="override the cluster's partition")
     p.add_argument("--time", default="02:00:00")
     p.add_argument("--dry-run", action="store_true")
     p.set_defaults(fn=cmd_submit)
